@@ -144,18 +144,22 @@ float leerVoltajeBateria() {
 
 ```
 MecanumRobot/
-├── CLAUDE.md                  ← este archivo
+├── CLAUDE.md                      ← este archivo
 ├── docs/
-│   └── Directriz_v1_0.md     ← directriz completa del proyecto
+│   └── Directriz_v1_0.md         ← directriz completa del proyecto
 ├── hardware/
+│   ├── fritzing/
+│   │   ├── mecanum_robot.fzz     ← esquemático editable (Fritzing)
+│   │   └── mecanum_robot.png     ← imagen exportada (visible en GitHub)
 │   └── bom/
 │       └── BOM_consolidada.md
 └── firmware/
-    ├── test_74hc595/          ← PASO ACTUAL
+    ├── test_74hc595/              ← PASO 1 ✅
     │   └── test_74hc595.ino
-    ├── test_tb6612/           ← siguiente paso
-    ├── test_i2c/              ← después
-    └── mecanum_main/          ← firmware final
+    ├── test_tb6612/               ← PASO ACTUAL
+    │   └── test_tb6612.ino
+    ├── test_i2c/                  ← siguiente
+    └── mecanum_main/              ← firmware final
 ```
 
 ---

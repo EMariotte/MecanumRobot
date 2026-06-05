@@ -46,11 +46,14 @@ Proyecto de construcción de un robot con ruedas Mecanum desarrollado en el **Se
 ```
 MecanumRobot/
 ├── firmware/
-│   ├── test_74hc595/      ← Paso 1 (completado)
-│   ├── test_tb6612/       ← Paso 2 (en curso)
+│   ├── test_74hc595/          ← Paso 1 (completado)
+│   ├── test_tb6612/           ← Paso 2 (en curso)
 │   ├── test_i2c/
 │   └── mecanum_main/
 ├── hardware/
+│   ├── fritzing/
+│   │   ├── mecanum_robot.fzz  ← esquemático editable (Fritzing)
+│   │   └── mecanum_robot.png  ← imagen para visualizar en GitHub
 │   └── bom/
 ├── docs/
 └── platformio.ini
