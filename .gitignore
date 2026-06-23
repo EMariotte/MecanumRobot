@@ -2,3 +2,4 @@
 .vscode/
 memory/
 hardware/**/.history/
+hardware/**/Schematic/AUX.kicad_sch
