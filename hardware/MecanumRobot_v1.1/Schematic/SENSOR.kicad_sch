@@ -1,0 +1,14 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "437899ae-6489-4e23-837a-7470cedac649")
+	(paper "A3")
+	(title_block
+		(title "MOTOR - Drivers de motor")
+		(date "2026-06-09")
+		(rev "v1.1")
+		(company "SENA-TecnoacademiaTolima")
+	)
+	(lib_symbols)
+)
