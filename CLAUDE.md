@@ -2,9 +2,15 @@
 > Directriz maestra para Claude Code. Leer completo antes de cualquier tarea.
 
 ## Estado del proyecto
-- **Fase actual:** Fase 6 — Firmware ESP-NOW (EN CURSO)
-- **Fases 1–5:** COMPLETADAS (arquitectura, potencia, motores, sensores, PCB)
-- **Paso actual:** Prueba subsistema 74HC595 con 8 LEDs antes de conectar TB6612
+_Última actualización: 2026-11-13_
+
+- **Fase actual:** Fase 6 — Firmware (EN CURSO)
+- **Fases 1–4:** COMPLETADAS (arquitectura, potencia, motores, sensores)
+- **Fase 5 — PCB:**
+  - **v1.0 (Fritzing):** layout terminado, exportes de fabricación (etch/mask/silk/paste) generados en `hardware/fritzing/`
+  - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
+- **Paso actual de firmware:** Paso 2 — `test_tb6612` (TB6612 ×2 + motores reales). Sketch escrito, pendiente de prueba en hardware
+- **Sketch activo en PlatformIO:** `firmware/test_tb6612` (ver `src_dir` en `platformio.ini`)
 
 ---
 
@@ -16,17 +22,26 @@
 | IDE | VS Code + extensión PlatformIO (recomendado) o Arduino IDE |
 | Framework | Arduino |
 | Board string PlatformIO | `nodemcuv2` |
+| Modo de flash | **DIO** (obligatorio — libera GPIO10) |
 | Velocidad Serial | 115200 baud |
 | Comunicación inalámbrica | ESP-NOW (peer-to-peer, sin router) |
 
-### platformio.ini base
+### platformio.ini
 ```ini
+[platformio]
+src_dir = firmware/test_tb6612     ; cambiar al avanzar de paso
+
 [env:nodemcuv2]
 platform = espressif8266
 board = nodemcuv2
 framework = arduino
+board_build.flash_mode = dio       ; necesario para usar GPIO10 (STCP)
 monitor_speed = 115200
+monitor_filters = send_on_enter, colorize
 ```
+
+> Para cambiar de sketch de prueba, solo se modifica `src_dir`. Cada carpeta de `firmware/` es un sketch independiente.
+> En Arduino IDE no hay `platformio.ini`: seleccionar manualmente *Flash Mode: DIO* en el menú Herramientas.
 
 ---
 
@@ -48,8 +63,10 @@ monitor_speed = 115200
 | GPIO3 | RX | XSHUT VL53L0X #2 | ToF derecha |
 | ADC0 | A0 | Monitor batería | Divisor 100k/13k |
 
-> **Nota GPIO10/SD3:** disponible porque el flash corre en modo DIO (solo usa GPIO6–8 y GPIO11).
+> **Nota GPIO10/SD3:** disponible solo porque el flash corre en modo DIO (usa GPIO6–9 y GPIO11). Si se compila en QIO el ESP8266 se resetea o cuelga al manipular el latch.
 > **Nota GPIO16/D0:** solo STBY — se pone HIGH en setup() y no se toca durante operación.
+> **Nota GPIO0/GPIO2/GPIO15 (pines de arranque):** GPIO0 y GPIO2 deben estar en HIGH y GPIO15 en LOW al encender. Las entradas del 74HC595 son alta impedancia y el TB6612 tiene pull-down interno de 200k en PWM, así que el arranque es compatible. No agregar pull-downs a D3/D4 ni pull-ups a D8.
+> **⚠ Nota GPIO1/GPIO3 (TX/RX):** comparten el puerto Serial con XSHUT de los VL53L0X. A partir de `test_i2c`, el monitor serial **no estará disponible** mientras los XSHUT estén activos. Hay que decidir en ese paso la estrategia de depuración (p. ej. Serial solo antes de iniciar los ToF, o depurar vía ESP-NOW).
 
 ---
 
@@ -68,6 +85,8 @@ Q6 → BIN1  TB6612 #2   Motor RR bit1
 Q7 → BIN2  TB6612 #2   Motor RR bit2
 ```
 
+> En el 74HC595, Q0 (QA) es el **pin 15**, no el pin 1. MR (pin 10) a +3V3, OE (pin 13) a GND, Q7S (pin 9) sin conectar.
+
 ### Tabla de dirección por motor (AINx / BINx)
 
 | bit_alto | bit_bajo | Resultado |
@@ -76,6 +95,8 @@ Q7 → BIN2  TB6612 #2   Motor RR bit2
 | 1 | 0 | Atrás |
 | 0 | 0 | Coast (libre) |
 | 1 | 1 | Brake (freno) |
+
+> Con dirección fija, PWM = LOW también produce *short brake* en el TB6612 (ver tabla H-SW del datasheet).
 
 ### Byte de dirección para movimientos mecanum
 
@@ -102,13 +123,18 @@ Q7 → BIN2  TB6612 #2   Motor RR bit2
 - Fusible: Polyfuse MF-R600 6A
 - TVS: P6KE10A (clamp 10V)
 - Regulador lógica: AMS1117-3.3V → 3V3 para todo el circuito lógico
+- Net de potencia protegida en KiCad: **`+VBAT_P`** (unificado en todas las hojas)
 
 ### Control de motores
-- 2× TB6612FNG (2 motores cada uno)
-- VM = 7.4V directo desde batería
+- 2× TB6612FNG (SSOP-24) — U2 motores frontales (FL/FR), U3 traseros (RL/RR)
+- 74HC595 (SOIC-16) como expansor de dirección
+- VM = 7.4V directo desde batería (`+VBAT_P`)
 - VCC lógica = 3.3V
-- STBY compartido GPIO16 + pull-up 10k a 3V3
+- STBY compartido GPIO16 + pull-up 10k a 3V3 (R8, uno solo para ambos drivers)
 - Corriente continua: 1.2A/canal, pico 3.2A
+- Desacople por TB6612: 100µF bulk VM + 100nF VM + 100nF VCC; 100nF en el 74HC595
+- Filtro por motor: 100nF/50V entre terminales (C25–C28)
+- Detalle completo: `hardware/MecanumRobot_v1.1/HOJA_MOTOR_notas.md`
 
 ### Sensores I2C (bus GPIO4/GPIO5)
 - MPU-6050 → dirección 0x68 (AD0=GND)
@@ -135,8 +161,27 @@ float leerVoltajeBateria() {
 | Dimensiones | 100mm × 80mm |
 | Capas | 2 (Top señal / Bottom GND plane) |
 | Conector batería | XT30 macho |
-| Conectores motor | JST-PH 2pin ×4 |
-| Software | KiCad o EasyEDA |
+| Conector motores | **Bornera de resorte 8 posiciones** (J2), pitch 3.5mm, entrada horizontal |
+| Software | Fritzing (v1.0) · KiCad (v1.1, en curso) |
+
+### Bornera de motores J2 (serigrafía)
+
+| Pin | Net | Serigrafía |
+|-----|-----|------------|
+| 1 | MOT_FL_A | FL+ |
+| 2 | MOT_FL_B | FL- |
+| 3 | MOT_FR_A | FR+ |
+| 4 | MOT_FR_B | FR- |
+| 5 | MOT_RL_A | RL+ |
+| 6 | MOT_RL_B | RL- |
+| 7 | MOT_RR_A | RR+ |
+| 8 | MOT_RR_B | RR- |
+
+> Se eligió bornera de resorte (no de tornillo) porque las de tornillo se aflojan con la vibración. Reemplaza a los 4× JST-PH del diseño original.
+
+### Convenciones KiCad v1.1
+- Global Labels: tipo **Output** en la hoja MCU (origen), tipo **Input** en las hojas destino
+- Nets locales de motor: sufijo `_M1` = TB6612 #1 (U2), `_M2` = TB6612 #2 (U3)
 
 ---
 
@@ -144,32 +189,42 @@ float leerVoltajeBateria() {
 
 ```
 MecanumRobot/
-├── CLAUDE.md                      ← este archivo
+├── CLAUDE.md                          ← este archivo
+├── platformio.ini                     ← src_dir apunta al sketch activo
 ├── docs/
-│   └── Directriz_v1_0.md         ← directriz completa del proyecto
+│   └── Directriz_v1_0.md             ← directriz completa del proyecto
 ├── hardware/
-│   ├── fritzing/
-│   │   ├── mecanum_robot.fzz     ← esquemático editable (Fritzing)
-│   │   └── mecanum_robot.png     ← imagen exportada (visible en GitHub)
-│   └── bom/
-│       └── BOM_consolidada.md
+│   ├── fritzing/                      ← PCB v1.0
+│   │   ├── RobotMecanum.fzz          ← proyecto editable
+│   │   ├── RobotMecanum_bb.png       ← vista protoboard
+│   │   ├── RobotMecanum_esquemático.png
+│   │   └── RobotMecanum_etch_*.pdf/svg ← exportes de fabricación
+│   └── MecanumRobot_v1.1/             ← KiCad v1.1 (en curso)
+│       ├── MecanumRobot_v1.1.kicad_sch  ← hoja raíz
+│       ├── Schematic/                 ← PWR, MCU, MOTOR, SENSOR (+ AUX pendiente)
+│       ├── libs/                      ← símbolo propio MiNodeMCU
+│       ├── bom/BOM_MecanumRobot_v1.1.csv
+│       ├── HOJA_MOTOR_notas.md        ← notas de diseño hoja MOTOR
+│       ├── pcb/                       ← (vacío — layout pendiente)
+│       └── gerbers/                   ← (vacío)
 └── firmware/
-    ├── test_74hc595/              ← PASO 1 ✅
+    ├── test_74hc595/                  ← PASO 1 ✅
     │   └── test_74hc595.ino
-    ├── test_tb6612/               ← PASO ACTUAL
+    ├── test_tb6612/                   ← PASO 2 — ACTUAL
     │   └── test_tb6612.ino
-    ├── test_i2c/                  ← siguiente
-    └── mecanum_main/              ← firmware final
+    ├── test_i2c/                      ← paso 3 (por crear)
+    ├── test_espnow/                   ← paso 4 (por crear)
+    └── mecanum_main/                  ← firmware final (por crear)
 ```
 
 ---
 
 ## Convenciones de código
 
-- Un archivo `.ino` por subsistema de prueba
+- Un archivo `.ino` por subsistema de prueba, cada uno en su carpeta bajo `firmware/`
 - Comentarios en español
 - Constantes de pines en `#define` al inicio
-- Serial.begin(115200) en todo sketch de prueba
+- Serial.begin(115200) en todo sketch de prueba (ver nota GPIO1/GPIO3 a partir de `test_i2c`)
 - Funciones de bajo nivel separadas de la lógica de movimiento
 
 ---
@@ -177,7 +232,12 @@ MecanumRobot/
 ## Flujo de trabajo — construcción incremental
 
 1. ✅ **test_74hc595** — ESP8266 + 74HC595 + 8 LEDs
-2. ⬜ **test_tb6612** — agregar TB6612 ×2 + motores reales
+2. 🟡 **test_tb6612** — agregar TB6612 ×2 + motores reales (sketch escrito, pendiente prueba)
 3. ⬜ **test_i2c** — agregar MPU-6050 y VL53L0X
 4. ⬜ **test_espnow** — comunicación inalámbrica
 5. ⬜ **mecanum_main** — firmware completo integrado
+
+### Pendientes de hardware
+- [ ] Completar hoja AUX en KiCad v1.1 y quitarla del `.gitignore`
+- [ ] ERC global del esquemático v1.1
+- [ ] Layout PCB v1.1 en KiCad + gerbers
