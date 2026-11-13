@@ -5,7 +5,7 @@
 	(uuid "5dffc4ee-8131-4eb2-8ad0-bcf7c356f2a9")
 	(paper "A4")
 	(title_block
-		(title "MOTOR - Drivers de motor")
+		(title "POTENCIA - PROTECCIONES")
 		(date "2026-06-09")
 		(rev "v1.1")
 		(company "SENA-TecnoacademiaTolima")
@@ -2536,156 +2536,6 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "power:+VDC"
-			(power global)
-			(pin_numbers
-				(hide yes)
-			)
-			(pin_names
-				(offset 0)
-				(hide yes)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "#PWR"
-				(at 0 -2.54 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "+VDC"
-				(at 0 6.35 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "Power symbol creates a global label with name \"+VDC\""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "global power"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "+VDC_0_1"
-				(polyline
-					(pts
-						(xy -1.143 3.175) (xy 1.143 3.175)
-					)
-					(stroke
-						(width 0.508)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(circle
-					(center 0 3.175)
-					(radius 1.905)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 2.032) (xy 0 4.318)
-					)
-					(stroke
-						(width 0.508)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 0) (xy 0 1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "+VDC_1_1"
-				(pin power_in line
-					(at 0 0 90)
-					(length 0)
-					(name ""
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
 		(symbol "power:GND"
 			(power global)
 			(pin_numbers
@@ -3002,6 +2852,12 @@
 		(uuid "d1c36f70-e4f3-4d77-bb0e-0259685baca1")
 	)
 	(junction
+		(at 184.15 99.06)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "d3638ec3-c996-4c69-8d9e-503bf11459a7")
+	)
+	(junction
 		(at 127 99.06)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3197,6 +3053,16 @@
 	)
 	(wire
 		(pts
+			(xy 184.15 99.06) (xy 187.96 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "38768d18-235a-440c-8abb-e17a1abe0955")
+	)
+	(wire
+		(pts
 			(xy 144.78 91.44) (xy 142.24 90.17)
 		)
 		(stroke
@@ -3227,7 +3093,7 @@
 	)
 	(wire
 		(pts
-			(xy 170.18 99.06) (xy 187.96 99.06)
+			(xy 170.18 99.06) (xy 184.15 99.06)
 		)
 		(stroke
 			(width 0)
@@ -3607,7 +3473,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Button_Switch_THT:SW_PUSH-12mm"
 			(at 58.42 66.04 0)
 			(hide yes)
 			(show_name no)
@@ -3667,7 +3533,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "0bc9c807-0d49-4d2f-8002-4066172f91cd")
-		(property "Reference" "#PWR03"
+		(property "Reference" "#PWR04"
 			(at 144.78 97.79 0)
 			(hide yes)
 			(show_name no)
@@ -3727,7 +3593,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR03")
+					(reference "#PWR04")
 					(unit 1)
 				)
 			)
@@ -3745,7 +3611,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "0c27e548-ff52-404e-ae90-a4a0d4998810")
-		(property "Reference" "R3"
+		(property "Reference" "R4"
 			(at 167.64 77.4699 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3809,7 +3675,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "R3")
+					(reference "R4")
 					(unit 1)
 				)
 			)
@@ -3846,7 +3712,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Fuse:Fuse_2920_7451Metric"
+		(property "Footprint" "Fuse:Fuse_2920_7451Metric_Pad2.10x5.45mm_HandSolder"
 			(at 114.3 78.74 90)
 			(hide yes)
 			(show_name no)
@@ -3917,7 +3783,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "SS14"
+		(property "Value" "SS14 40V/1A"
 			(at 222.25 69.5324 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3988,7 +3854,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "1110c9a1-18be-4194-bc97-aacbba974e33")
-		(property "Reference" "R2"
+		(property "Reference" "R1"
 			(at 130.81 83.82 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3998,7 +3864,7 @@
 				)
 			)
 		)
-		(property "Value" "100K"
+		(property "Value" "100kΩ"
 			(at 130.81 86.36 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4050,7 +3916,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "R2")
+					(reference "R1")
 					(unit 1)
 				)
 			)
@@ -4068,7 +3934,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "113e63f0-c3ec-4736-b768-365a5142e18d")
-		(property "Reference" "#PWR010"
+		(property "Reference" "#PWR011"
 			(at 240.03 78.74 0)
 			(hide yes)
 			(show_name no)
@@ -4128,7 +3994,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR010")
+					(reference "#PWR011")
 					(unit 1)
 				)
 			)
@@ -4166,7 +4032,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-5"
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6_Handsoldering"
 			(at 177.546 58.42 0)
 			(hide yes)
 			(show_name no)
@@ -4258,7 +4124,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Inductor_SMD:L_Bourns_SRR1260"
+		(property "Footprint" "Inductor_SMD:L_Wuerth_LQFS-4828"
 			(at 231.14 64.77 0)
 			(hide yes)
 			(show_name no)
@@ -4317,7 +4183,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "2bb0e122-369d-4f21-8616-64a0ca79b259")
-		(property "Reference" "C2"
+		(property "Reference" "C4"
 			(at 211.328 69.596 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4328,7 +4194,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "4.7mF"
+		(property "Value" "4.7uF"
 			(at 208.28 76.454 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4381,7 +4247,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "C2")
+					(reference "C4")
 					(unit 1)
 				)
 			)
@@ -4479,7 +4345,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "37cddbb3-8524-425c-9665-10cf1daf6613")
-		(property "Reference" "R1"
+		(property "Reference" "R2"
 			(at 138.43 83.82 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4489,7 +4355,7 @@
 				)
 			)
 		)
-		(property "Value" "10k"
+		(property "Value" "10kΩ"
 			(at 138.43 86.36 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4541,7 +4407,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "R1")
+					(reference "R2")
 					(unit 1)
 				)
 			)
@@ -4558,7 +4424,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "4b46dfcf-4ea4-498c-b94f-dc352a5eb18e")
-		(property "Reference" "#FLG04"
+		(property "Reference" "#FLG03"
 			(at 190.5 103.505 0)
 			(hide yes)
 			(show_name no)
@@ -4618,7 +4484,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#FLG04")
+					(reference "#FLG03")
 					(unit 1)
 				)
 			)
@@ -4880,7 +4746,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "5e5230b4-32d5-4d03-8874-218b3d86ff95")
-		(property "Reference" "#PWR011"
+		(property "Reference" "#PWR03"
 			(at 144.78 87.63 0)
 			(hide yes)
 			(show_name no)
@@ -4940,7 +4806,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR011")
+					(reference "#PWR03")
 					(unit 1)
 				)
 			)
@@ -4958,7 +4824,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "5f36cc40-5693-4a0b-89fd-29441851b0ad")
-		(property "Reference" "C4"
+		(property "Reference" "C5"
 			(at 243.84 67.3099 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5022,7 +4888,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "C4")
+					(reference "C5")
 					(unit 1)
 				)
 			)
@@ -5107,6 +4973,84 @@
 		)
 	)
 	(symbol
+		(lib_id "power:+BATT")
+		(at 184.15 99.06 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7db28e64-930e-4daf-b30a-e85a0f4d185e")
+		(property "Reference" "#PWR08"
+			(at 184.15 102.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "+VBAT_P"
+			(at 184.15 93.98 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 184.15 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 184.15 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+BATT\""
+			(at 184.15 99.06 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "cbbe5dc9-7489-48bb-a3d5-2983ac174649")
+		)
+		(instances
+			(project "MecanumRobot_v1.1"
+				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
+					(reference "#PWR08")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 144.78 77.47 0)
 		(unit 1)
@@ -5117,7 +5061,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "7fb64aa9-2257-49c4-8ff5-3fa729c84cb0")
-		(property "Reference" "R4"
+		(property "Reference" "R3"
 			(at 147.32 76.1999 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5181,7 +5125,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "R4")
+					(reference "R3")
 					(unit 1)
 				)
 			)
@@ -5221,7 +5165,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_01005_0402Metric"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 			(at 197.8152 64.77 0)
 			(hide yes)
 			(show_name no)
@@ -5281,7 +5225,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "91f28d36-48d0-466c-826b-0d832d5b7c9d")
-		(property "Reference" "#FLG03"
+		(property "Reference" "#FLG04"
 			(at 259.08 55.245 0)
 			(hide yes)
 			(show_name no)
@@ -5341,7 +5285,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#FLG03")
+					(reference "#FLG04")
 					(unit 1)
 				)
 			)
@@ -5359,7 +5303,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b495c562-1867-4071-afdc-36eac025d775")
-		(property "Reference" "#PWR08"
+		(property "Reference" "#PWR09"
 			(at 209.55 82.55 0)
 			(hide yes)
 			(show_name no)
@@ -5419,7 +5363,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR08")
+					(reference "#PWR09")
 					(unit 1)
 				)
 			)
@@ -5513,7 +5457,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "b73e45aa-2ef5-4279-9d42-aec2376e8096")
-		(property "Reference" "#PWR07"
+		(property "Reference" "#PWR06"
 			(at 161.29 74.93 0)
 			(hide yes)
 			(show_name no)
@@ -5573,7 +5517,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR07")
+					(reference "#PWR06")
 					(unit 1)
 				)
 			)
@@ -5672,7 +5616,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c230348c-1f44-404e-b2f4-2fcfc10bda95")
-		(property "Reference" "#FLG02"
+		(property "Reference" "#FLG01"
 			(at 43.18 81.915 0)
 			(hide yes)
 			(show_name no)
@@ -5732,7 +5676,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#FLG02")
+					(reference "#FLG01")
 					(unit 1)
 				)
 			)
@@ -5830,7 +5774,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "d84d002e-191f-464f-8bc9-5214b89e2a5d")
-		(property "Reference" "C5"
+		(property "Reference" "C1"
 			(at 160.02 76.1999 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5894,85 +5838,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "C5")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+VDC")
-		(at 187.96 99.06 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "da118557-4696-4eb0-9e81-6a1772a1bf9a")
-		(property "Reference" "#PWR012"
-			(at 187.96 101.6 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "+VBAT_P"
-			(at 187.96 91.44 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 187.96 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 187.96 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"+VDC\""
-			(at 187.96 99.06 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "b784d462-d8ba-44ce-a20a-d08f2aaf8b15")
-		)
-		(instances
-			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR012")
+					(reference "C1")
 					(unit 1)
 				)
 			)
@@ -5990,7 +5856,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "dc3ade4c-b75e-45a2-a818-64e59e0d267e")
-		(property "Reference" "#FLG01"
+		(property "Reference" "#FLG02"
 			(at 54.61 53.975 0)
 			(hide yes)
 			(show_name no)
@@ -6050,7 +5916,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#FLG01")
+					(reference "#FLG02")
 					(unit 1)
 				)
 			)
@@ -6068,7 +5934,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "e1b8d0ed-2e78-40f1-8d08-f45daf9e12f6")
-		(property "Reference" "#PWR09"
+		(property "Reference" "#PWR010"
 			(at 219.71 78.74 0)
 			(hide yes)
 			(show_name no)
@@ -6128,7 +5994,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR09")
+					(reference "#PWR010")
 					(unit 1)
 				)
 			)
@@ -6146,7 +6012,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "f7c16846-c6b9-4643-9e6e-1d474d9eacc4")
-		(property "Reference" "#PWR06"
+		(property "Reference" "#PWR07"
 			(at 170.18 116.84 0)
 			(hide yes)
 			(show_name no)
@@ -6206,7 +6072,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR06")
+					(reference "#PWR07")
 					(unit 1)
 				)
 			)
@@ -6224,7 +6090,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "fc7a8e63-41ee-4819-9241-fb63bb52d8f9")
-		(property "Reference" "#PWR04"
+		(property "Reference" "#PWR012"
 			(at 250.19 60.96 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6283,7 +6149,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "#PWR04")
+					(reference "#PWR012")
 					(unit 1)
 				)
 			)
@@ -6300,7 +6166,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "ff15dc14-5573-42f7-bcbf-a6763b419099")
-		(property "Reference" "C1"
+		(property "Reference" "C2"
 			(at 173.99 100.7109 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6364,7 +6230,7 @@
 		(instances
 			(project "MecanumRobot_v1.1"
 				(path "/437899ae-6489-4e23-837a-7470cedac649/966f2feb-d6ee-496a-93ba-b2fee02f5dcf"
-					(reference "C1")
+					(reference "C2")
 					(unit 1)
 				)
 			)

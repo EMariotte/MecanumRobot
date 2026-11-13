@@ -217,7 +217,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -38.1 0)
 				(length 2.54)
 				(name "GPIO16/D0"
@@ -235,7 +235,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -31.75 0)
 				(length 2.54)
 				(name "GPIO5/D1"
@@ -253,7 +253,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin bidirectional line
 				(at -24.13 -29.21 0)
 				(length 2.54)
 				(name "GPIO4/D2"
@@ -271,7 +271,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -22.86 0)
 				(length 2.54)
 				(name "GPIO10/SD3"
@@ -289,7 +289,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -20.32 0)
 				(length 2.54)
 				(name "GPIO0/D3"
@@ -307,7 +307,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -34.29 0)
 				(length 2.54)
 				(name "GPIO9/SD2"
@@ -325,7 +325,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -25.4 0)
 				(length 2.54)
 				(name "GPIO2/D4"
@@ -343,7 +343,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at 22.86 -29.21 180)
 				(length 2.54)
 				(name "GPIO8/SD1"
@@ -523,7 +523,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at 22.86 -44.45 180)
 				(length 2.54)
 				(name "GPIO1/TX"

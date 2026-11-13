@@ -5,7 +5,7 @@
 	(uuid "437899ae-6489-4e23-837a-7470cedac649")
 	(paper "A4")
 	(title_block
-		(title "MOTOR - Drivers de motor")
+		(title "MICROCONTROLADOR")
 		(date "2026-06-09")
 		(rev "v1.1")
 		(company "SENA-TecnoacademiaTolima")
@@ -658,7 +658,7 @@
 			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "U_DevKitv1"
-				(at -0.635 11.43 0)
+				(at 0.508 11.43 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -669,8 +669,8 @@
 					)
 				)
 			)
-			(property "Value" "NodeMCU_V1.0"
-				(at 0 16.256 0)
+			(property "Value" ""
+				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects
@@ -679,8 +679,8 @@
 					)
 				)
 			)
-			(property "Footprint" "NodeMCU:DevKit_V1"
-				(at 1.27 14.224 0)
+			(property "Footprint" ""
+				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(hide yes)
@@ -1010,7 +1010,7 @@
 						)
 					)
 				)
-				(pin power_in line
+				(pin input line
 					(at -24.13 0 0)
 					(length 2.54)
 					(name "3V3"
@@ -1028,7 +1028,7 @@
 						)
 					)
 				)
-				(pin power_in line
+				(pin input line
 					(at -24.13 -2.54 0)
 					(length 2.54)
 					(name "GND"
@@ -1172,7 +1172,7 @@
 						)
 					)
 				)
-				(pin input line
+				(pin output line
 					(at 22.86 -44.45 180)
 					(length 2.54)
 					(name "GPIO1/TX"
@@ -1190,7 +1190,7 @@
 						)
 					)
 				)
-				(pin power_in line
+				(pin input line
 					(at 22.86 1.27 180)
 					(length 2.54)
 					(name "VIN"
@@ -1473,6 +1473,12 @@
 		(uuid "08ac057a-7b37-4c53-bfa3-119fadcadd0e")
 	)
 	(junction
+		(at 90.17 62.23)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "0d546afb-4167-43f4-a340-4a73b4e368fc")
+	)
+	(junction
 		(at 198.12 67.31)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -1670,7 +1676,7 @@
 	)
 	(wire
 		(pts
-			(xy 78.74 62.23) (xy 102.87 62.23)
+			(xy 78.74 62.23) (xy 90.17 62.23)
 		)
 		(stroke
 			(width 0)
@@ -1697,6 +1703,16 @@
 			(type default)
 		)
 		(uuid "b2bd581f-f20e-4878-9609-d974cf27155e")
+	)
+	(wire
+		(pts
+			(xy 90.17 62.23) (xy 102.87 62.23)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ba83e2e3-8b2a-405e-aad3-7bf4f8336ec5")
 	)
 	(wire
 		(pts
@@ -2061,7 +2077,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "0f23eec1-1ae8-4145-abf6-d65239557258")
-		(property "Reference" "#PWR014"
+		(property "Reference" "#PWR016"
 			(at 118.11 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -2120,12 +2136,8 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR014")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR014")
+					(reference "#PWR016")
 					(unit 1)
 				)
 			)
@@ -2143,7 +2155,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "10b3435f-bf69-414a-af12-43ca4ba8e77d")
-		(property "Reference" "#PWR017"
+		(property "Reference" "#PWR013"
 			(at 78.74 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -2202,12 +2214,8 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR017")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR017")
+					(reference "#PWR013")
 					(unit 1)
 				)
 			)
@@ -2215,7 +2223,7 @@
 	)
 	(symbol
 		(lib_id "power:+3.3V")
-		(at 102.87 62.23 0)
+		(at 90.17 62.23 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2225,8 +2233,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "2dc1ab52-c70d-4d8d-8913-80723d575790")
-		(property "Reference" "#PWR013"
-			(at 102.87 66.04 0)
+		(property "Reference" "#PWR014"
+			(at 90.17 66.04 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2237,7 +2245,7 @@
 			)
 		)
 		(property "Value" "+3.3V"
-			(at 102.87 57.15 0)
+			(at 90.17 57.15 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2247,7 +2255,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 102.87 62.23 0)
+			(at 90.17 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2258,7 +2266,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 102.87 62.23 0)
+			(at 90.17 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2269,7 +2277,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
-			(at 102.87 62.23 0)
+			(at 90.17 62.23 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2284,12 +2292,8 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR013")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR013")
+					(reference "#PWR014")
 					(unit 1)
 				)
 			)
@@ -2306,7 +2310,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "6a9dceb4-05c5-4458-9b78-106ee19c1515")
-		(property "Reference" "#PWR019"
+		(property "Reference" "#PWR018"
 			(at 189.23 106.68 0)
 			(hide yes)
 			(show_name no)
@@ -2365,12 +2369,8 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR019")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR019")
+					(reference "#PWR018")
 					(unit 1)
 				)
 			)
@@ -2450,10 +2450,6 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "C7")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
 					(reference "C7")
 					(unit 1)
@@ -2473,7 +2469,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "8473876f-9bda-46e0-9685-7030cfef78c5")
-		(property "Reference" "#PWR018"
+		(property "Reference" "#PWR020"
 			(at 198.12 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2532,12 +2528,8 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR018")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR018")
+					(reference "#PWR020")
 					(unit 1)
 				)
 			)
@@ -2672,10 +2664,6 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "U_DevKitv1")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
 					(reference "U_DevKitv1")
 					(unit 1)
@@ -2757,10 +2745,6 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "C6")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
 					(reference "C6")
 					(unit 1)
@@ -2790,7 +2774,7 @@
 				)
 			)
 		)
-		(property "Value" "10K"
+		(property "Value" "10kΩ"
 			(at 182.88 60.96 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2841,10 +2825,6 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "R6")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
 					(reference "R6")
 					(unit 1)
@@ -2864,7 +2844,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c24f8e71-106d-498d-a00b-f7d3cfa1fc0c")
-		(property "Reference" "#PWR015"
+		(property "Reference" "#PWR017"
 			(at 189.23 68.58 0)
 			(hide yes)
 			(show_name no)
@@ -2923,12 +2903,8 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR015")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR015")
+					(reference "#PWR017")
 					(unit 1)
 				)
 			)
@@ -3019,10 +2995,6 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "J_prog")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
 					(reference "J_prog1")
 					(unit 1)
@@ -3042,7 +3014,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "ea1cff03-36fb-4921-8b18-d57f48335914")
-		(property "Reference" "#PWR016"
+		(property "Reference" "#PWR015"
 			(at 102.87 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -3101,12 +3073,8 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR016")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR016")
+					(reference "#PWR015")
 					(unit 1)
 				)
 			)
@@ -3134,7 +3102,7 @@
 				)
 			)
 		)
-		(property "Value" "10K"
+		(property "Value" "10kΩ"
 			(at 194.31 63.5 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3185,10 +3153,6 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "R7")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
 					(reference "R7")
 					(unit 1)
@@ -3207,7 +3171,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "ffd51421-3426-4dc8-97cc-6ce5c15b10e6")
-		(property "Reference" "#PWR020"
+		(property "Reference" "#PWR019"
 			(at 189.23 111.76 0)
 			(hide yes)
 			(show_name no)
@@ -3266,20 +3230,11 @@
 		)
 		(instances
 			(project "MecanumRobot_v1.1"
-				(path "/437899ae-6489-4e23-837a-7470cedac649"
-					(reference "#PWR020")
-					(unit 1)
-				)
 				(path "/437899ae-6489-4e23-837a-7470cedac649/2675334f-df74-49b4-8645-bd34a0345bb1"
-					(reference "#PWR020")
+					(reference "#PWR019")
 					(unit 1)
 				)
 			)
-		)
-	)
-	(sheet_instances
-		(path "/"
-			(page "1")
 		)
 	)
 )

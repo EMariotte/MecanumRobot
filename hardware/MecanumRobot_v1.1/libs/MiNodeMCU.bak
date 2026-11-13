@@ -397,7 +397,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -12.7 0)
 				(length 2.54)
 				(name "GPIO14/D5"
@@ -415,7 +415,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -7.62 0)
 				(length 2.54)
 				(name "GPIO12/D6"
@@ -433,7 +433,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -10.16 0)
 				(length 2.54)
 				(name "GPIO13/D7"
@@ -451,7 +451,7 @@
 					)
 				)
 			)
-			(pin input line
+			(pin output line
 				(at -24.13 -15.24 0)
 				(length 2.54)
 				(name "GPIO15/D8"

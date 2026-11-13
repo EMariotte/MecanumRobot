@@ -3,9 +3,9 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "437899ae-6489-4e23-837a-7470cedac649")
-	(paper "A3")
+	(paper "A4")
 	(title_block
-		(title "MOTOR - Drivers de motor")
+		(title "ESQUEMATICO RAIZ")
 		(date "2026-06-09")
 		(rev "v1.1")
 		(company "SENA-TecnoacademiaTolima")
@@ -38,7 +38,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Sheetfile" "SENSOR.kicad_sch"
+		(property "Sheetfile" "Schematic/SENSOR.kicad_sch"
 			(at 177.8 89.4846 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -84,7 +84,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Sheetfile" "MCU.kicad_sch"
+		(property "Sheetfile" "Schematic/MCU.kicad_sch"
 			(at 86.36 89.4846 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -130,7 +130,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Sheetfile" "PWR.kicad_sch"
+		(property "Sheetfile" "Schematic/PWR.kicad_sch"
 			(at 40.64 89.4846 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -176,7 +176,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Sheetfile" "AUX.kicad_sch"
+		(property "Sheetfile" "Schematic/AUX.kicad_sch"
 			(at 229.87 90.7546 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -222,7 +222,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Sheetfile" "MOTOR.kicad_sch"
+		(property "Sheetfile" "Schematic/MOTOR.kicad_sch"
 			(at 128.27 89.4846 0)
 			(show_name no)
 			(do_not_autoplace no)
