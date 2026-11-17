@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#111418">
+  <title>Mecanum Robot</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Barra superior: estado de conexión y telemetría -->
+  <header>
+    <h1>Mecanum 4WD</h1>
+    <div class="estado">
+      <span id="conexion" class="indicador desconectado">Sin conexión</span>
+      <span class="dato">Batería <b id="bateria">-- V</b></span>
+      <span class="dato">Activo <b id="uptime">--</b></span>
+    </div>
+  </header>
+
+  <!-- Zona de control: se irá llenando en los sub-pasos 3b–3e -->
+  <main>
+    <section class="panel" id="zona-joystick">
+      <div class="joystick-base">
+        <div class="joystick-mando"></div>
+      </div>
+      <p class="pendiente">Joystick — paso 3d</p>
+    </section>
+
+    <section class="panel controles">
+      <label>Velocidad máxima <b id="vel-valor">50%</b>
+        <input type="range" id="vel-max" min="10" max="100" value="50" disabled>
+      </label>
+      <button id="stop" class="stop" disabled>STOP</button>
+      <p class="pendiente">Control de motores — paso 3c</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Memoria libre <b id="heap">--</b></span>
+    <span>Dispositivos <b id="clientes">--</b></span>
+    <span>Paso 3a · página servida desde LittleFS</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

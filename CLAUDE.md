@@ -10,8 +10,9 @@ _Última actualización: 2026-11-17_
   - **v1.0 (Fritzing):** layout terminado, exportes de fabricación (etch/mask/silk/paste) generados en `hardware/fritzing/`
   - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
 - **Paso 2 — `test_tb6612`:** ✅ validado en hardware el 2026-11-17 (4 motores adelante → stop → atrás → stop)
-- **Paso actual de firmware:** Paso 3 — `test_i2c` (MPU-6050 + VL53L0X ×2) — sketch por crear
-- **Sketch activo en PlatformIO:** `firmware/test_tb6612` (ver `src_dir` en `platformio.ini`)
+- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3a**
+- **Sensores I2C:** aún no se tienen físicamente → `test_i2c` pospuesto hasta adquirirlos
+- **Sketch activo en PlatformIO:** `firmware/test_web` (ver `src_dir` en `platformio.ini`)
 
 ---
 
@@ -25,23 +26,32 @@ _Última actualización: 2026-11-17_
 | Board string PlatformIO | `nodemcuv2` |
 | Modo de flash | **DIO** (obligatorio — libera GPIO10) |
 | Velocidad Serial | 115200 baud |
-| Comunicación inalámbrica | ESP-NOW (peer-to-peer, sin router) |
+| Comunicación inalámbrica | Wi-Fi modo AP + página web en LittleFS + WebSocket (ESP-NOW: opcional, a futuro) |
+| Sistema de archivos | LittleFS (2 MB, layout `eagle.flash.4m2m.ld`) |
+| Librerías | `esp32async/ESPAsyncWebServer` + `esp32async/ESPAsyncTCP` |
 
 ### platformio.ini
 ```ini
 [platformio]
-src_dir = firmware/test_tb6612     ; cambiar al avanzar de paso
+src_dir = firmware/test_web             ; cambiar al avanzar de paso
+data_dir = firmware/test_web/data       ; archivos de la página → LittleFS
 
 [env:nodemcuv2]
 platform = espressif8266
 board = nodemcuv2
 framework = arduino
-board_build.flash_mode = dio       ; necesario para usar GPIO10 (STCP)
+board_build.flash_mode = dio            ; necesario para usar GPIO10 (STCP)
+board_build.filesystem = littlefs
+board_build.ldscript = eagle.flash.4m2m.ld
 monitor_speed = 115200
-monitor_filters = send_on_enter, colorize
+monitor_filters = send_on_enter, colorize, esp8266_exception_decoder
+lib_deps =
+    esp32async/ESPAsyncTCP
+    esp32async/ESPAsyncWebServer
 ```
 
-> Para cambiar de sketch de prueba, solo se modifica `src_dir`. Cada carpeta de `firmware/` es un sketch independiente.
+> Para cambiar de sketch de prueba, solo se modifica `src_dir` (y `data_dir` si el sketch tiene página web). Cada carpeta de `firmware/` es un sketch independiente.
+> Los sketches con página web se cargan en **dos partes**: *Upload* (programa) y *Upload Filesystem Image* (carpeta `data/`). Si solo cambia la página, basta con la segunda.
 > En Arduino IDE no hay `platformio.ini`: seleccionar manualmente *Flash Mode: DIO* en el menú Herramientas.
 
 ---
@@ -120,6 +130,37 @@ Si **todas las salidas marcan 0 V**, revisar antes de dar el chip por dañado:
 | Rotar CCW | 10 01 10 01 | — |
 
 > Los vectores completos se calcularán en Fase 6 firmware.
+
+---
+
+## Control remoto por página web
+
+### Arquitectura
+- **Red propia (modo AP):** SSID `MecanumRobot`, clave `mecanum2026`, IP `192.168.4.1`. No depende de router (definidos en `#define` al inicio del sketch; cambiar el SSID si hay varios robots juntos).
+- **Página en LittleFS:** `index.html` + `style.css` + `app.js` en `data/`. **Sin librerías ni recursos externos (CDN, fuentes web):** el celular no tiene internet mientras está conectado a la red del robot.
+- **Control por WebSocket** (desde 3b): la página envía el estado del joystick ~20 veces/s. No usar una petición HTTP por comando (latencia excesiva).
+- **Failsafe obligatorio:** si no llega ningún comando en **300 ms**, los motores se detienen. Cubre desconexión, pantalla bloqueada o salir de alcance.
+- **Batería:** se envía a la página ~1 vez/s. No llamar `analogRead(A0)` en un bucle rápido: en el ESP8266 eso puede cortar el Wi-Fi.
+
+### Cinemática mecanum
+El joystick entrega `vy` (avance), `vx` (lateral) y `w` (giro), cada uno en −1…+1:
+```
+FL = vy + vx + w     FR = vy − vx − w
+RL = vy − vx + w     RR = vy + vx − w
+```
+- Normalizar: si algún |valor| > 1, dividir los cuatro por el máximo.
+- **Signo** → bits de dirección del motor en el byte del 74HC595 (01 adelante, 10 atrás).
+- **Magnitud** × velocidad máxima → PWM del motor.
+- Los signos de `vx` y `w` dependen del montaje de los rodillos: se **validan empíricamente en 3c**. Los bytes de strafe/rotación de la tabla anterior aún no están verificados.
+
+### Sub-pasos de `test_web`
+| Sub-paso | Valida |
+|---|---|
+| 3a ✅ | AP + página servida desde LittleFS (motores en STANDBY) |
+| 3b | WebSocket: comandos de la página visibles en el Monitor Serial |
+| 3c | Botones fijos (adelante, atrás, strafe, rotar) moviendo motores + failsafe; confirmar sentidos |
+| 3d | Joystick táctil + cinemática con velocidad proporcional |
+| 3e | Telemetría de batería en la página |
 
 ---
 
@@ -223,8 +264,14 @@ MecanumRobot/
     │   └── diag_74hc595.ino
     ├── test_tb6612/                   ← PASO 2 ✅
     │   └── test_tb6612.ino
-    ├── test_i2c/                      ← PASO 3 — SIGUIENTE (por crear)
-    ├── test_espnow/                   ← paso 4 (por crear)
+    ├── test_web/                      ← PASO 3 — ACTUAL (control web)
+    │   ├── test_web.ino
+    │   └── data/                      ← se carga a LittleFS
+    │       ├── index.html
+    │       ├── style.css
+    │       └── app.js
+    ├── test_i2c/                      ← paso 4 (pospuesto: faltan sensores)
+    ├── test_espnow/                   ← opcional, a futuro
     └── mecanum_main/                  ← firmware final (por crear)
 ```
 
@@ -244,9 +291,10 @@ MecanumRobot/
 
 1. ✅ **test_74hc595** — ESP8266 + 74HC595 + 8 LEDs
 2. ✅ **test_tb6612** — agregar TB6612 ×2 + motores reales
-3. ⬜ **test_i2c** — agregar MPU-6050 y VL53L0X
-4. ⬜ **test_espnow** — comunicación inalámbrica
+3. 🟡 **test_web** — control remoto por página web (sub-pasos 3a–3e, ver sección *Control remoto por página web*)
+4. ⏸ **test_i2c** — agregar MPU-6050 y VL53L0X (pospuesto hasta tener los sensores)
 5. ⬜ **mecanum_main** — firmware completo integrado
+6. ⬜ **test_espnow** — opcional: control con un segundo ESP como mando físico
 
 ### Pendientes de hardware
 - [ ] Completar hoja AUX en KiCad v1.1 y quitarla del `.gitignore`
