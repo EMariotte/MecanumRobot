@@ -10,7 +10,7 @@ _Última actualización: 2026-11-17_
   - **v1.0 (Fritzing):** layout terminado, exportes de fabricación (etch/mask/silk/paste) generados en `hardware/fritzing/`
   - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
 - **Paso 2 — `test_tb6612`:** ✅ validado en hardware el 2026-11-17 (4 motores adelante → stop → atrás → stop)
-- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3a**
+- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3c** (3a ✅ 3b ✅)
 - **Sensores I2C:** aún no se tienen físicamente → `test_i2c` pospuesto hasta adquirirlos
 - **Sketch activo en PlatformIO:** `firmware/test_web` (ver `src_dir` en `platformio.ini`)
 
@@ -141,6 +141,19 @@ Si **todas las salidas marcan 0 V**, revisar antes de dar el chip por dañado:
 - **Control por WebSocket** (desde 3b): la página envía el estado del joystick ~20 veces/s. No usar una petición HTTP por comando (latencia excesiva).
 - **Failsafe obligatorio:** si no llega ningún comando en **300 ms**, los motores se detienen. Cubre desconexión, pantalla bloqueada o salir de alcance.
 - **Batería:** se envía a la página ~1 vez/s. No llamar `analogRead(A0)` en un bucle rápido: en el ESP8266 eso puede cortar el Wi-Fi.
+- **Un solo dispositivo con el control:** el último en conectarse lo toma; a los anteriores se les envía `TOMADO` y se desconectan. La página no reconecta sola tras `TOMADO` (evita que dos celulares se peleen el control); muestra un botón *Recuperar control*.
+- **Callback del WebSocket:** se ejecuta fuera de `loop()`. Solo guarda datos y levanta banderas; las impresiones por Serial, el manejo de motores y el cierre de clientes se hacen en `loop()`.
+
+### Protocolo WebSocket (`/ws`, mensajes de texto)
+| Dirección | Mensaje | Significado |
+|---|---|---|
+| Página → robot | `C vx vy w vmax` | Comando, 20 veces/s (también es el latido del failsafe). `vx`,`vy`,`w`: −100…100; `vmax`: 10…100 (%) |
+| Página → robot | `S` | STOP inmediato |
+| Página → robot | `P n` | Ping; el robot lo devuelve igual para medir latencia |
+| Robot → página | `{"up","heap","cli","hz","fs"}` | Estado 1 vez/s: tiempo activo, memoria libre, dispositivos, comandos/s recibidos, failsafe activo |
+| Robot → página | `TOMADO` | Otro dispositivo tomó el control |
+
+> La página deja de enviar cuando está oculta (pantalla bloqueada, cambio de app) → el robot entra en failsafe.
 
 ### Cinemática mecanum
 El joystick entrega `vy` (avance), `vx` (lateral) y `w` (giro), cada uno en −1…+1:
@@ -157,7 +170,7 @@ RL = vy − vx + w     RR = vy + vx − w
 | Sub-paso | Valida |
 |---|---|
 | 3a ✅ | AP + página servida desde LittleFS (motores en STANDBY) |
-| 3b | WebSocket: comandos de la página visibles en el Monitor Serial |
+| 3b ✅ | WebSocket: comandos de la página visibles en el Monitor Serial + failsafe (sin motores) |
 | 3c | Botones fijos (adelante, atrás, strafe, rotar) moviendo motores + failsafe; confirmar sentidos |
 | 3d | Joystick táctil + cinemática con velocidad proporcional |
 | 3e | Telemetría de batería en la página |

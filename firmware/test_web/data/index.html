@@ -13,33 +13,50 @@
     <h1>Mecanum 4WD</h1>
     <div class="estado">
       <span id="conexion" class="indicador desconectado">Sin conexión</span>
+      <span id="failsafe" class="indicador aviso oculto">Failsafe</span>
       <span class="dato">Batería <b id="bateria">-- V</b></span>
-      <span class="dato">Activo <b id="uptime">--</b></span>
+      <span class="dato">Latencia <b id="latencia">--</b></span>
     </div>
   </header>
 
-  <!-- Zona de control: se irá llenando en los sub-pasos 3b–3e -->
+  <!-- Aviso cuando otro dispositivo toma el control -->
+  <div id="aviso-tomado" class="aviso-tomado oculto">
+    Otro dispositivo tomó el control del robot.
+    <button id="recuperar">Recuperar control</button>
+  </div>
+
   <main>
-    <section class="panel" id="zona-joystick">
-      <div class="joystick-base">
-        <div class="joystick-mando"></div>
+    <!-- Botones de dirección: mantener presionado para mover.
+         El joystick los complementará en el paso 3d. -->
+    <section class="panel">
+      <div class="pad">
+        <button class="dir" data-w="-100"  aria-label="Rotar a la izquierda">⟲</button>
+        <button class="dir" data-vy="100"  aria-label="Adelante">▲</button>
+        <button class="dir" data-w="100"   aria-label="Rotar a la derecha">⟳</button>
+        <button class="dir" data-vx="-100" aria-label="Izquierda">◀</button>
+        <span class="centro"></span>
+        <button class="dir" data-vx="100"  aria-label="Derecha">▶</button>
+        <span></span>
+        <button class="dir" data-vy="-100" aria-label="Atrás">▼</button>
+        <span></span>
       </div>
-      <p class="pendiente">Joystick — paso 3d</p>
     </section>
 
     <section class="panel controles">
       <label>Velocidad máxima <b id="vel-valor">50%</b>
-        <input type="range" id="vel-max" min="10" max="100" value="50" disabled>
+        <input type="range" id="vel-max" min="10" max="100" value="50">
       </label>
-      <button id="stop" class="stop" disabled>STOP</button>
-      <p class="pendiente">Control de motores — paso 3c</p>
+      <button id="stop" class="stop">STOP</button>
+      <p class="enviando">Enviando <b id="cmd-actual">vx 0 · vy 0 · w 0</b></p>
     </section>
   </main>
 
   <footer>
+    <span>Comandos recibidos <b id="hz">--</b>/s</span>
+    <span>Activo <b id="uptime">--</b></span>
     <span>Memoria libre <b id="heap">--</b></span>
     <span>Dispositivos <b id="clientes">--</b></span>
-    <span>Paso 3a · página servida desde LittleFS</span>
+    <span>Paso 3b · WebSocket (motores en standby)</span>
   </footer>
 
   <script src="app.js"></script>
