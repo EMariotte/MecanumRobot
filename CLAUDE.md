@@ -2,14 +2,15 @@
 > Directriz maestra para Claude Code. Leer completo antes de cualquier tarea.
 
 ## Estado del proyecto
-_Última actualización: 2026-11-13_
+_Última actualización: 2026-11-17_
 
 - **Fase actual:** Fase 6 — Firmware (EN CURSO)
 - **Fases 1–4:** COMPLETADAS (arquitectura, potencia, motores, sensores)
 - **Fase 5 — PCB:**
   - **v1.0 (Fritzing):** layout terminado, exportes de fabricación (etch/mask/silk/paste) generados en `hardware/fritzing/`
   - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
-- **Paso actual de firmware:** Paso 2 — `test_tb6612` (TB6612 ×2 + motores reales). Sketch escrito, pendiente de prueba en hardware
+- **Paso 2 — `test_tb6612`:** ✅ validado en hardware el 2026-11-17 (4 motores adelante → stop → atrás → stop)
+- **Paso actual de firmware:** Paso 3 — `test_i2c` (MPU-6050 + VL53L0X ×2) — sketch por crear
 - **Sketch activo en PlatformIO:** `firmware/test_tb6612` (ver `src_dir` en `platformio.ini`)
 
 ---
@@ -86,6 +87,14 @@ Q7 → BIN2  TB6612 #2   Motor RR bit2
 ```
 
 > En el 74HC595, Q0 (QA) es el **pin 15**, no el pin 1. MR (pin 10) a +3V3, OE (pin 13) a GND, Q7S (pin 9) sin conectar.
+
+### Diagnóstico del 74HC595
+Si **todas las salidas marcan 0 V**, revisar antes de dar el chip por dañado:
+1. Pin 16 (VCC) ≈ 3.3 V · pin 13 (OE) = 0 V · **pin 10 (MR) ≈ 3.3 V**
+2. Las líneas DS / SHCP / STCP llegan a los pines 14 / 11 / 12
+
+> **Caso real (2026-11-17):** salidas en 0 con el chip sano — MR no hacía contacto con 3V3 y el registro se borraba continuamente.
+> Para medir con multímetro usar `firmware/diag_74hc595` (deja cada línea en nivel fijo y los TB6612 en STANDBY).
 
 ### Tabla de dirección por motor (AINx / BINx)
 
@@ -210,9 +219,11 @@ MecanumRobot/
 └── firmware/
     ├── test_74hc595/                  ← PASO 1 ✅
     │   └── test_74hc595.ino
-    ├── test_tb6612/                   ← PASO 2 — ACTUAL
+    ├── diag_74hc595/                  ← herramienta de diagnóstico (multímetro)
+    │   └── diag_74hc595.ino
+    ├── test_tb6612/                   ← PASO 2 ✅
     │   └── test_tb6612.ino
-    ├── test_i2c/                      ← paso 3 (por crear)
+    ├── test_i2c/                      ← PASO 3 — SIGUIENTE (por crear)
     ├── test_espnow/                   ← paso 4 (por crear)
     └── mecanum_main/                  ← firmware final (por crear)
 ```
@@ -232,7 +243,7 @@ MecanumRobot/
 ## Flujo de trabajo — construcción incremental
 
 1. ✅ **test_74hc595** — ESP8266 + 74HC595 + 8 LEDs
-2. 🟡 **test_tb6612** — agregar TB6612 ×2 + motores reales (sketch escrito, pendiente prueba)
+2. ✅ **test_tb6612** — agregar TB6612 ×2 + motores reales
 3. ⬜ **test_i2c** — agregar MPU-6050 y VL53L0X
 4. ⬜ **test_espnow** — comunicación inalámbrica
 5. ⬜ **mecanum_main** — firmware completo integrado
