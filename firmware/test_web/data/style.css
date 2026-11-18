@@ -136,6 +136,19 @@ input[type="range"] { width: 100%; accent-color: var(--acento); }
 .stop:disabled { opacity: 0.35; }
 .stop:active { filter: brightness(1.25); }
 
+/* --- Prueba de ruedas --- */
+.prueba-ruedas { width: 100%; max-width: 260px; }
+.prueba-ruedas p { font-size: 0.85rem; color: var(--suave); margin-bottom: 8px; }
+.prueba-ruedas p span { font-size: 0.75rem; }
+.ruedas {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.rueda { padding: 12px 0; font-size: 1rem; font-weight: 700; }
+.frente { font-size: 0.7rem; color: var(--suave); text-align: center; }
+
 .enviando { font-size: 0.8rem; color: var(--suave); }
 .enviando b { color: var(--texto); font-variant-numeric: tabular-nums; }
 

@@ -1,8 +1,10 @@
 // Página de control — Robot Mecanum 4WD
-// Paso 3b: envía comandos por WebSocket y muestra el estado del robot.
+// Paso 3c: envía comandos por WebSocket (movimientos y prueba de ruedas)
+// y muestra el estado del robot.
 //
 // Protocolo (texto):
 //   Página → robot   "C vx vy w vmax"   20 veces por segundo (también sirve de latido)
+//                    "M i v vmax"       en lugar de "C" mientras se prueba una rueda (i: 0=FL 1=FR 2=RL 3=RR)
 //                    "S"                STOP inmediato
 //                    "P n"              ping para medir latencia
 //   Robot → página   {"up","heap","cli","hz","fs"}  estado, 1 vez/s
@@ -19,7 +21,7 @@ const $ = (id) => document.getElementById(id);
 let ws = null;
 let controlTomado = false;       // otro dispositivo tiene el control: no reconectar solo
 let ultimoEstado = 0;
-let cmd = { vx: 0, vy: 0, w: 0 };
+let cmd = { vx: 0, vy: 0, w: 0, rueda: -1 };   // rueda ≥ 0: prueba de una sola rueda
 
 // ------------------------------------------------------------
 //  Conexión WebSocket
@@ -91,12 +93,16 @@ function velocidadMax() {
   return Number($("vel-max").value);
 }
 
+const NOMBRE_RUEDA = ["FL", "FR", "RL", "RR"];
+
 function mostrarComando() {
-  $("cmd-actual").textContent = `vx ${cmd.vx} · vy ${cmd.vy} · w ${cmd.w}`;
+  $("cmd-actual").textContent = cmd.rueda >= 0
+    ? `rueda ${NOMBRE_RUEDA[cmd.rueda]} adelante`
+    : `vx ${cmd.vx} · vy ${cmd.vy} · w ${cmd.w}`;
 }
 
 function soltarTodo() {
-  cmd = { vx: 0, vy: 0, w: 0 };
+  cmd = { vx: 0, vy: 0, w: 0, rueda: -1 };
   document.querySelectorAll(".dir.activo").forEach((b) => b.classList.remove("activo"));
   mostrarComando();
 }
@@ -105,7 +111,11 @@ function soltarTodo() {
 // Con la pantalla bloqueada u oculta no se envía → el robot activa el failsafe.
 setInterval(() => {
   if (document.hidden) return;
-  enviar(`C ${cmd.vx} ${cmd.vy} ${cmd.w} ${velocidadMax()}`);
+  if (cmd.rueda >= 0) {
+    enviar(`M ${cmd.rueda} ${cmd.vy} ${velocidadMax()}`);     // prueba de una rueda
+  } else {
+    enviar(`C ${cmd.vx} ${cmd.vy} ${cmd.w} ${velocidadMax()}`);
+  }
 }, PERIODO_ENVIO_MS);
 
 setInterval(() => enviar(`P ${Math.round(performance.now())}`), PERIODO_PING_MS);
@@ -126,11 +136,17 @@ document.querySelectorAll(".dir").forEach((boton) => {
     soltarTodo();
     boton.setPointerCapture(ev.pointerId);
     boton.classList.add("activo");
-    cmd = {
-      vx: Number(boton.dataset.vx || 0),
-      vy: Number(boton.dataset.vy || 0),
-      w: Number(boton.dataset.w || 0),
-    };
+    if (boton.dataset.rueda !== undefined) {
+      // Prueba de rueda: solo esa rueda, hacia adelante
+      cmd = { vx: 0, vy: 100, w: 0, rueda: Number(boton.dataset.rueda) };
+    } else {
+      cmd = {
+        vx: Number(boton.dataset.vx || 0),
+        vy: Number(boton.dataset.vy || 0),
+        w: Number(boton.dataset.w || 0),
+        rueda: -1,
+      };
+    }
     mostrarComando();
   };
   const soltar = () => {

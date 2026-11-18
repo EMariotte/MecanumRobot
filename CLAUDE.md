@@ -2,7 +2,7 @@
 > Directriz maestra para Claude Code. Leer completo antes de cualquier tarea.
 
 ## Estado del proyecto
-_Última actualización: 2026-11-17_
+_Última actualización: 2026-11-18_
 
 - **Fase actual:** Fase 6 — Firmware (EN CURSO)
 - **Fases 1–4:** COMPLETADAS (arquitectura, potencia, motores, sensores)
@@ -10,7 +10,7 @@ _Última actualización: 2026-11-17_
   - **v1.0 (Fritzing):** layout terminado, exportes de fabricación (etch/mask/silk/paste) generados en `hardware/fritzing/`
   - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
 - **Paso 2 — `test_tb6612`:** ✅ validado en hardware el 2026-11-17 (4 motores adelante → stop → atrás → stop)
-- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3c** (3a ✅ 3b ✅)
+- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3d** (3a ✅ 3b ✅ 3c ✅)
 - **Sensores I2C:** aún no se tienen físicamente → `test_i2c` pospuesto hasta adquirirlos
 - **Sketch activo en PlatformIO:** `firmware/test_web` (ver `src_dir` en `platformio.ini`)
 
@@ -117,19 +117,21 @@ Si **todas las salidas marcan 0 V**, revisar antes de dar el chip por dañado:
 
 > Con dirección fija, PWM = LOW también produce *short brake* en el TB6612 (ver tabla H-SW del datasheet).
 
-### Byte de dirección para movimientos mecanum
+### Byte de dirección para movimientos mecanum — ✅ validado en el robot (2026-11-18)
 
-| Movimiento | Byte binario | Hex |
-|------------|-------------|-----|
-| Todos adelante | 01 01 01 01 | 0x55 |
-| Todos atrás | 10 10 10 10 | 0xAA |
-| Todos stop | 00 00 00 00 | 0x00 |
-| Derecha (strafe) | 10 01 01 10 | — |
-| Izquierda (strafe) | 01 10 10 01 | — |
-| Rotar CW | 01 10 01 10 | — |
-| Rotar CCW | 10 01 10 01 | — |
+Orden de los pares: **RR RL FR FL** (Q7..Q0). A = adelante, T = atrás.
 
-> Los vectores completos se calcularán en Fase 6 firmware.
+| Movimiento | FL | FR | RL | RR | Byte binario | Hex |
+|------------|----|----|----|----|-------------|-----|
+| Adelante | A | A | A | A | 01 01 01 01 | 0x55 |
+| Atrás | T | T | T | T | 10 10 10 10 | 0xAA |
+| Derecha (strafe) | A | T | T | A | 01 10 10 01 | 0x69 |
+| Izquierda (strafe) | T | A | A | T | 10 01 01 10 | 0x96 |
+| Rotar CW (derecha) | A | T | A | T | 10 01 10 01 | 0x99 |
+| Rotar CCW (izquierda) | T | A | T | A | 01 10 01 10 | 0x66 |
+| Stop (coast) | — | — | — | — | 00 00 00 00 | 0x00 |
+
+> Estos bytes salen de la cinemática mecanum (sección *Control remoto por página web*) con calibración por defecto (`SIGNO_VX = 1`, `SIGNO_W = 1`, `INVERTIR = {1,1,1,1}`). El firmware no usa la tabla directamente: calcula el byte en cada comando.
 
 ---
 
@@ -148,6 +150,7 @@ Si **todas las salidas marcan 0 V**, revisar antes de dar el chip por dañado:
 | Dirección | Mensaje | Significado |
 |---|---|---|
 | Página → robot | `C vx vy w vmax` | Comando, 20 veces/s (también es el latido del failsafe). `vx`,`vy`,`w`: −100…100; `vmax`: 10…100 (%) |
+| Página → robot | `M i v vmax` | Prueba de una rueda, reemplaza a `C` mientras se mantiene (`i`: 0=FL 1=FR 2=RL 3=RR; `v`: −100…100) |
 | Página → robot | `S` | STOP inmediato |
 | Página → robot | `P n` | Ping; el robot lo devuelve igual para medir latencia |
 | Robot → página | `{"up","heap","cli","hz","fs"}` | Estado 1 vez/s: tiempo activo, memoria libre, dispositivos, comandos/s recibidos, failsafe activo |
@@ -164,14 +167,16 @@ RL = vy − vx + w     RR = vy + vx − w
 - Normalizar: si algún |valor| > 1, dividir los cuatro por el máximo.
 - **Signo** → bits de dirección del motor en el byte del 74HC595 (01 adelante, 10 atrás).
 - **Magnitud** × velocidad máxima → PWM del motor.
-- Los signos de `vx` y `w` dependen del montaje de los rodillos: se **validan empíricamente en 3c**. Los bytes de strafe/rotación de la tabla anterior aún no están verificados.
+- Los signos de `vx` y `w` dependen del montaje de los rodillos: ✅ **validados en 3c** con calibración por defecto (ver tabla *Byte de dirección para movimientos mecanum*).
+- **Calibración en `test_web.ino`:** `SIGNO_VX`, `SIGNO_W` (±1) para invertir un eje y `INVERTIR[4]` (±1 por rueda FL, FR, RL, RR) para una rueda con polaridad invertida.
+- Bytes que produce la fórmula (orden RR RL FR FL = Q7..Q0): adelante `01 01 01 01` (0x55) · derecha `01 10 10 01` (0x69) · rotar CW `10 01 10 01` (0x99). El Monitor Serial imprime el byte y el PWM de cada comando.
 
 ### Sub-pasos de `test_web`
 | Sub-paso | Valida |
 |---|---|
 | 3a ✅ | AP + página servida desde LittleFS (motores en STANDBY) |
 | 3b ✅ | WebSocket: comandos de la página visibles en el Monitor Serial + failsafe (sin motores) |
-| 3c | Botones fijos (adelante, atrás, strafe, rotar) moviendo motores + failsafe; confirmar sentidos |
+| 3c ✅ | Botones (adelante, atrás, strafe, rotar) moviendo motores vía cinemática + prueba de ruedas individuales + failsafe; confirmar sentidos |
 | 3d | Joystick táctil + cinemática con velocidad proporcional |
 | 3e | Telemetría de batería en la página |
 

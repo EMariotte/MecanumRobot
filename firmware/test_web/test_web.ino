@@ -5,19 +5,23 @@
 #include <ESPAsyncWebServer.h>
 
 // ============================================================
-//  PRUEBA CONTROL WEB — Paso 3b
+//  PRUEBA CONTROL WEB — Paso 3c
 //  Robot Mecanum 4WD — Fase 6
 //  El robot crea su propia red Wi-Fi (Access Point), sirve la
 //  página guardada en LittleFS y recibe comandos por WebSocket.
-//  Los comandos se muestran en el Monitor Serial.
-//  Motores DESHABILITADOS en este sub-paso (STBY = LOW).
+//  En este sub-paso los MOTORES SE MUEVEN: cinemática mecanum
+//  aplicada a los botones de la página + prueba de ruedas.
+//
+//  ⚠ Primera prueba con el robot levantado (ruedas en el aire)
+//    y velocidad máxima baja.
 //
 //  Carga en dos partes desde PlatformIO:
 //    1. Upload                     → este programa
 //    2. Upload Filesystem Image    → contenido de data/
 //
 //  Protocolo WebSocket (/ws), mensajes de texto:
-//    Página → robot   "C vx vy w vmax"  comando (vx,vy,w: -100..100, vmax: 10..100)
+//    Página → robot   "C vx vy w vmax"  movimiento (vx,vy,w: -100..100, vmax: 10..100)
+//                     "M i v vmax"      prueba de una rueda (i: 0=FL 1=FR 2=RL 3=RR, v: -100..100)
 //                     "S"               STOP inmediato
 //                     "P n"             ping (el robot lo devuelve igual)
 //    Robot → página   {"up":..,"heap":..,"cli":..,"hz":..,"fs":0|1}  estado, 1 vez/s
@@ -43,9 +47,30 @@
 #define PWM_RL  14   // D5
 #define PWM_RR  15   // D8
 
+// --- PWM ---
+#define PWM_FRECUENCIA 1000   // Hz
+#define PWM_MAX        255    // rango de analogWrite
+
 // --- Control ---
-#define FAILSAFE_MS   300   // sin comandos en este tiempo → motores detenidos
+#define FAILSAFE_MS       300   // sin comandos en este tiempo → motores detenidos
 #define PERIODO_ESTADO_MS 1000
+
+// ------------------------------------------------------------
+//  CALIBRACIÓN — ajustar según la prueba en el robot real
+// ------------------------------------------------------------
+// Signo de los ejes: si "Derecha" mueve el robot a la izquierda,
+// cambiar SIGNO_VX a -1. Si "Rotar derecha" gira al revés, SIGNO_W a -1.
+#define SIGNO_VX  1
+#define SIGNO_W   1
+// Inversión por rueda (FL, FR, RL, RR): si en la prueba de ruedas una
+// gira hacia atrás, poner -1 en su posición (o intercambiar sus cables
+// en la bornera).
+const int8_t INVERTIR[4] = { 1, 1, 1, 1 };
+
+// Índices y nombres de las ruedas
+enum { FL = 0, FR = 1, RL = 2, RR = 3 };
+const char *NOMBRE_RUEDA[4] = { "FL", "FR", "RL", "RR" };
+const uint8_t PIN_PWM[4] = { PWM_FL, PWM_FR, PWM_RL, PWM_RR };
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -56,6 +81,7 @@ AsyncWebSocket ws("/ws");
 // ------------------------------------------------------------
 struct Comando {
   int vx, vy, w, vmax;
+  int rueda;          // -1 = movimiento normal; 0..3 = prueba de esa rueda (usa vy)
 };
 
 volatile uint32_t idControl = 0;          // cliente que tiene el control
@@ -65,7 +91,7 @@ volatile bool     stopPedido = false;
 volatile bool     clienteDesconectado = false;
 volatile uint32_t comandosRecibidos = 0;  // contador para calcular comandos/s
 volatile unsigned long tUltimoComando = 0;
-Comando comandoActual = {0, 0, 0, 50};
+Comando comandoActual = {0, 0, 0, 30, -1};
 
 bool failsafeActivo = true;               // arranca detenido hasta recibir comandos
 
@@ -78,24 +104,79 @@ void shiftWrite(byte data) {
   digitalWrite(STCP_PIN, HIGH);
 }
 
-void detenerMotores() {
-  analogWrite(PWM_FL, 0);
-  analogWrite(PWM_FR, 0);
-  analogWrite(PWM_RL, 0);
-  analogWrite(PWM_RR, 0);
-  shiftWrite(0x00);                                          // dirección: coast
+// Aplica dirección y PWM a las 4 ruedas.
+// velocidad[i]: -1.0 (atrás máx) … +1.0 (adelante máx), ya con calibración.
+// Bits por rueda en el 74HC595 (par Qn+1,Qn): 01 adelante, 10 atrás, 00 libre.
+void aplicarRuedas(const float velocidad[4], int vmax, byte *dirOut, int *pwmOut) {
+  byte dir = 0;
+  for (int i = 0; i < 4; i++) {
+    float v = velocidad[i];
+    int pwm = (int) roundf(fabsf(v) * vmax / 100.0f * PWM_MAX);
+    if (pwm > 0) dir |= (v > 0 ? 0b01 : 0b10) << (2 * i);
+    pwmOut[i] = pwm;
+  }
+  shiftWrite(dir);                         // primero dirección…
+  for (int i = 0; i < 4; i++) analogWrite(PIN_PWM[i], pwmOut[i]);   // …luego velocidad
+  *dirOut = dir;
 }
 
-void motoresApagados() {
-  pinMode(STBY_PIN, OUTPUT); digitalWrite(STBY_PIN, LOW);   // TB6612 en standby
-  pinMode(PWM_FL, OUTPUT);
-  pinMode(PWM_FR, OUTPUT);
-  pinMode(PWM_RL, OUTPUT);
-  pinMode(PWM_RR, OUTPUT);
+void detenerMotores() {
+  for (int i = 0; i < 4; i++) analogWrite(PIN_PWM[i], 0);
+  shiftWrite(0x00);                        // dirección: coast
+}
+
+void inicializarMotores() {
+  pinMode(STBY_PIN, OUTPUT); digitalWrite(STBY_PIN, LOW);   // standby mientras arranca
+  for (int i = 0; i < 4; i++) pinMode(PIN_PWM[i], OUTPUT);
   pinMode(DS_PIN,   OUTPUT);
   pinMode(SHCP_PIN, OUTPUT);
   pinMode(STCP_PIN, OUTPUT);
+  analogWriteRange(PWM_MAX);
+  analogWriteFreq(PWM_FRECUENCIA);
   detenerMotores();
+}
+
+// ------------------------------------------------------------
+//  Lógica de movimiento — cinemática mecanum
+// ------------------------------------------------------------
+//   FL = vy + vx + w     FR = vy − vx − w
+//   RL = vy − vx + w     RR = vy + vx − w
+// Se normaliza para que ninguna rueda pase de ±1.
+void calcularVelocidades(const Comando &c, float velocidad[4]) {
+  if (c.rueda >= 0) {
+    // Prueba de una rueda: solo esa gira, con valor vy
+    for (int i = 0; i < 4; i++) velocidad[i] = 0;
+    velocidad[c.rueda] = c.vy / 100.0f;
+  } else {
+    float vx = SIGNO_VX * c.vx / 100.0f;
+    float vy = c.vy / 100.0f;
+    float w  = SIGNO_W  * c.w  / 100.0f;
+    velocidad[FL] = vy + vx + w;
+    velocidad[FR] = vy - vx - w;
+    velocidad[RL] = vy - vx + w;
+    velocidad[RR] = vy + vx - w;
+
+    float maximo = 1.0f;
+    for (int i = 0; i < 4; i++) maximo = max(maximo, fabsf(velocidad[i]));
+    for (int i = 0; i < 4; i++) velocidad[i] /= maximo;
+  }
+  for (int i = 0; i < 4; i++) velocidad[i] *= INVERTIR[i];
+}
+
+void imprimirAplicado(const Comando &c, byte dir, const int pwm[4]) {
+  if (c.rueda >= 0) {
+    Serial.printf("RUEDA %s  v=%4d  vmax=%3d%%", NOMBRE_RUEDA[c.rueda], c.vy, c.vmax);
+  } else {
+    Serial.printf("CMD  vx=%4d  vy=%4d  w=%4d  vmax=%3d%%", c.vx, c.vy, c.w, c.vmax);
+  }
+  // Byte en el orden de la tabla del CLAUDE.md: RR RL FR FL (Q7..Q0)
+  Serial.print("  →  dir ");
+  for (int i = 3; i >= 0; i--) {
+    Serial.print((dir >> (2 * i + 1)) & 1);
+    Serial.print((dir >> (2 * i)) & 1);
+    Serial.print(i > 0 ? " " : "");
+  }
+  Serial.printf(" (0x%02X)  pwm FL=%d FR=%d RL=%d RR=%d\n", dir, pwm[FL], pwm[FR], pwm[RL], pwm[RR]);
 }
 
 // ------------------------------------------------------------
@@ -111,6 +192,19 @@ void procesarMensaje(AsyncWebSocketClient *client, char *msg) {
         c.vy   = constrain(c.vy,   -100, 100);
         c.w    = constrain(c.w,    -100, 100);
         c.vmax = constrain(c.vmax,   10, 100);
+        c.rueda = -1;
+        comandoActual = c;
+        tUltimoComando = millis();
+        comandosRecibidos++;
+        hayComandoNuevo = true;
+      }
+      break;
+    }
+    case 'M': {
+      Comando c = {0, 0, 0, 0, -1};
+      if (sscanf(msg, "M %d %d %d", &c.rueda, &c.vy, &c.vmax) == 3 && c.rueda >= 0 && c.rueda <= 3) {
+        c.vy   = constrain(c.vy,   -100, 100);
+        c.vmax = constrain(c.vmax,   10, 100);
         comandoActual = c;
         tUltimoComando = millis();
         comandosRecibidos++;
@@ -120,6 +214,7 @@ void procesarMensaje(AsyncWebSocketClient *client, char *msg) {
     }
     case 'S':
       comandoActual.vx = comandoActual.vy = comandoActual.w = 0;
+      comandoActual.rueda = -1;
       tUltimoComando = millis();
       stopPedido = true;
       break;
@@ -176,10 +271,12 @@ void listarArchivos() {
 
 // ------------------------------------------------------------
 void setup() {
-  motoresApagados();               // primero: garantizar que nada se mueve
+  inicializarMotores();            // primero: garantizar que nada se mueve
   Serial.begin(115200);
   delay(100);
-  Serial.println("\n\n=== TEST WEB — Paso 3b (WebSocket) ===");
+  Serial.println("\n\n=== TEST WEB — Paso 3c (motores activos) ===");
+  Serial.printf("Calibración: SIGNO_VX=%d  SIGNO_W=%d  INVERTIR={%d,%d,%d,%d}\n",
+                SIGNO_VX, SIGNO_W, INVERTIR[FL], INVERTIR[FR], INVERTIR[RL], INVERTIR[RR]);
 
   // --- Sistema de archivos ---
   if (!LittleFS.begin()) {
@@ -223,6 +320,10 @@ void setup() {
 
   server.begin();
   Serial.println("Servidor web iniciado — WebSocket en /ws");
+
+  // Motores listos: salir de standby (dirección en coast y PWM en 0)
+  digitalWrite(STBY_PIN, HIGH);
+  Serial.println("TB6612 habilitados (STBY = HIGH)");
 }
 
 // ------------------------------------------------------------
@@ -245,7 +346,8 @@ void loop() {
   // --- Desconexión del dispositivo con el control ---
   if (clienteDesconectado) {
     clienteDesconectado = false;
-    Serial.println("El dispositivo con el control se desconectó");
+    detenerMotores();
+    Serial.println("El dispositivo con el control se desconectó → motores detenidos");
   }
 
   // --- STOP pedido desde la página ---
@@ -255,14 +357,21 @@ void loop() {
     Serial.println(">> STOP desde la página");
   }
 
-  // --- Comando nuevo: imprimir solo si cambió ---
+  // --- Comando nuevo: aplicar a los motores si cambió ---
   if (hayComandoNuevo) {
     hayComandoNuevo = false;
-    static Comando impreso = {999, 999, 999, 999};
+    static Comando aplicado = {999, 999, 999, 999, 999};
     Comando c = comandoActual;
-    if (c.vx != impreso.vx || c.vy != impreso.vy || c.w != impreso.w || c.vmax != impreso.vmax) {
-      Serial.printf("CMD  vx=%4d  vy=%4d  w=%4d  vmax=%3d%%\n", c.vx, c.vy, c.w, c.vmax);
-      impreso = c;
+    bool cambio = c.vx != aplicado.vx || c.vy != aplicado.vy || c.w != aplicado.w ||
+                  c.vmax != aplicado.vmax || c.rueda != aplicado.rueda;
+    if (cambio || failsafeActivo) {
+      float velocidad[4];
+      byte dir;
+      int pwm[4];
+      calcularVelocidades(c, velocidad);
+      aplicarRuedas(velocidad, c.vmax, &dir, pwm);
+      if (cambio) imprimirAplicado(c, dir, pwm);
+      aplicado = c;
     }
     if (failsafeActivo) {
       failsafeActivo = false;

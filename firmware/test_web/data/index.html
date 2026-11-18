@@ -43,10 +43,25 @@
     </section>
 
     <section class="panel controles">
-      <label>Velocidad máxima <b id="vel-valor">50%</b>
-        <input type="range" id="vel-max" min="10" max="100" value="50">
+      <label>Velocidad máxima <b id="vel-valor">30%</b>
+        <input type="range" id="vel-max" min="10" max="100" value="30">
       </label>
       <button id="stop" class="stop">STOP</button>
+
+      <!-- Prueba de ruedas: dispuestas como en el robot visto desde arriba.
+           Mantener presionado → solo esa rueda gira hacia ADELANTE. -->
+      <div class="prueba-ruedas">
+        <p>Prueba de ruedas <span>(mantener → gira adelante)</span></p>
+        <div class="ruedas">
+          <button class="dir rueda" data-rueda="0">FL</button>
+          <span class="frente">▲ frente</span>
+          <button class="dir rueda" data-rueda="1">FR</button>
+          <button class="dir rueda" data-rueda="2">RL</button>
+          <span></span>
+          <button class="dir rueda" data-rueda="3">RR</button>
+        </div>
+      </div>
+
       <p class="enviando">Enviando <b id="cmd-actual">vx 0 · vy 0 · w 0</b></p>
     </section>
   </main>
@@ -56,7 +71,7 @@
     <span>Activo <b id="uptime">--</b></span>
     <span>Memoria libre <b id="heap">--</b></span>
     <span>Dispositivos <b id="clientes">--</b></span>
-    <span>Paso 3b · WebSocket (motores en standby)</span>
+    <span>Paso 3c · motores activos</span>
   </footer>
 
   <script src="app.js"></script>
