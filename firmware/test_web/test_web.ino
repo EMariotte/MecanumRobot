@@ -3,14 +3,17 @@
 #include <LittleFS.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <Wire.h>
 
 // ============================================================
-//  PRUEBA CONTROL WEB — Paso 3d
+//  PRUEBA CONTROL WEB — Paso 3e
 //  Robot Mecanum 4WD — Fase 6
 //  El robot crea su propia red Wi-Fi (Access Point), sirve la
 //  página guardada en LittleFS y recibe comandos por WebSocket.
 //  Control con dos joysticks (mover + girar) y velocidad
 //  proporcional con PWM mínimo de arranque.
+//  Telemetría de batería con INA226 por I2C: voltaje, corriente,
+//  potencia y mAh consumidos.
 //
 //  ⚠ Primera prueba con el robot levantado (ruedas en el aire)
 //    y velocidad máxima baja.
@@ -24,7 +27,8 @@
 //                     "M i v vmax"      prueba de una rueda (i: 0=FL 1=FR 2=RL 3=RR, v: -100..100)
 //                     "S"               STOP inmediato
 //                     "P n"             ping (el robot lo devuelve igual)
-//    Robot → página   {"up":..,"heap":..,"cli":..,"hz":..,"fs":0|1}  estado, 1 vez/s
+//    Robot → página   {"up":..,"heap":..,"cli":..,"hz":..,"fs":0|1,
+//                      "ina":0|1,"v":..,"i":..,"p":..,"mah":..}      estado, 1 vez/s
 //                     "P n"             respuesta al ping
 //                     "TOMADO"          otro dispositivo tomó el control
 // ============================================================
@@ -61,6 +65,17 @@
 // --- Control ---
 #define FAILSAFE_MS       300   // sin comandos en este tiempo → motores detenidos
 #define PERIODO_ESTADO_MS 1000
+
+// --- I2C ---
+#define SDA_PIN  4   // GPIO4 / D2
+#define SCL_PIN  5   // GPIO5 / D1
+
+// --- INA226 (monitor de batería) ---
+#define INA226_DIR        0x40    // A0 = A1 = GND
+#define SHUNT_OHM         0.010f  // resistencia R010 del módulo
+#define PERIODO_INA_MS    100     // lectura de la batería (integra los mAh)
+#define REINTENTO_INA_MS  5000    // si no responde, volver a buscarlo
+#define PERIODO_LOG_BAT_MS 5000   // impresión de la batería en el Monitor Serial
 
 // ------------------------------------------------------------
 //  CALIBRACIÓN — ajustar según la prueba en el robot real
@@ -272,6 +287,88 @@ void onWsEvento(AsyncWebSocket *server, AsyncWebSocketClient *client,
 }
 
 // ------------------------------------------------------------
+//  I2C — escaneo del bus
+// ------------------------------------------------------------
+const char *nombreI2C(uint8_t dir) {
+  switch (dir) {
+    case 0x29: return "VL53L0X (dirección por defecto)";
+    case 0x30: return "VL53L0X #1 (reasignado)";
+    case 0x40: return "INA226";
+    case 0x68: return "MPU-6050";
+    default:   return "desconocido";
+  }
+}
+
+void escanearI2C() {
+  Serial.println("Escaneo del bus I2C (SDA=D2, SCL=D1):");
+  int encontrados = 0;
+  for (uint8_t dir = 1; dir < 127; dir++) {
+    Wire.beginTransmission(dir);
+    if (Wire.endTransmission() == 0) {
+      Serial.printf("   0x%02X  %s\n", dir, nombreI2C(dir));
+      encontrados++;
+    }
+  }
+  if (encontrados == 0) Serial.println("   (ningún dispositivo — revisar SDA, SCL, VCC y GND)");
+}
+
+// ------------------------------------------------------------
+//  INA226 — bajo nivel (registros de 16 bits, MSB primero)
+//    0x00 configuración · 0x01 voltaje del shunt (2.5 µV/bit, con signo)
+//    0x02 voltaje del bus (1.25 mV/bit) · 0xFE fabricante · 0xFF chip
+// ------------------------------------------------------------
+bool inaEscribir(uint8_t reg, uint16_t valor) {
+  Wire.beginTransmission(INA226_DIR);
+  Wire.write(reg);
+  Wire.write(valor >> 8);
+  Wire.write(valor & 0xFF);
+  return Wire.endTransmission() == 0;
+}
+
+bool inaLeer(uint8_t reg, uint16_t &valor) {
+  Wire.beginTransmission(INA226_DIR);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom((uint8_t) INA226_DIR, (uint8_t) 2) != 2) return false;
+  uint8_t alto = Wire.read();
+  uint8_t bajo = Wire.read();
+  valor = ((uint16_t) alto << 8) | bajo;
+  return true;
+}
+
+// Estado de la batería (actualizado en loop)
+bool  inaPresente = false;
+float vBateria = 0;        // V
+float iBateria = 0;        // A (positivo = la batería entrega corriente)
+float pBateria = 0;        // W
+float mAhConsumidos = 0;   // desde que encendió el robot
+
+bool iniciarINA226() {
+  uint16_t fabricante, chip;
+  if (!inaLeer(0xFE, fabricante) || !inaLeer(0xFF, chip)) return false;
+  if (fabricante != 0x5449 || chip != 0x2260) {
+    Serial.printf("AVISO: en 0x%02X hay un chip que no es INA226 (fab=0x%04X chip=0x%04X)\n",
+                  INA226_DIR, fabricante, chip);
+    return false;
+  }
+  // Configuración 0x4527: promedio de 16 muestras, conversión de 1.1 ms
+  // para bus y shunt, modo continuo → lectura nueva cada ~35 ms
+  return inaEscribir(0x00, 0x4527);
+}
+
+// Lee voltaje y corriente; integra los mAh. Devuelve false si falla el I2C.
+bool leerINA226(unsigned long dtMs) {
+  uint16_t rawBus, rawShunt;
+  if (!inaLeer(0x02, rawBus) || !inaLeer(0x01, rawShunt)) return false;
+  vBateria = rawBus * 0.00125f;
+  float vShunt = (int16_t) rawShunt * 2.5e-6f;   // con signo
+  iBateria = vShunt / SHUNT_OHM;
+  pBateria = vBateria * iBateria;
+  mAhConsumidos += iBateria * 1000.0f * dtMs / 3600000.0f;
+  return true;
+}
+
+// ------------------------------------------------------------
 //  LittleFS
 // ------------------------------------------------------------
 void listarArchivos() {
@@ -290,10 +387,21 @@ void setup() {
   inicializarMotores();            // primero: garantizar que nada se mueve
   Serial.begin(115200);
   delay(100);
-  Serial.println("\n\n=== TEST WEB — Paso 3d (joysticks) ===");
+  Serial.println("\n\n=== TEST WEB — Paso 3e (batería INA226) ===");
   Serial.printf("Calibración: SIGNO_VX=%d  SIGNO_W=%d  INVERTIR={%d,%d,%d,%d}\n",
                 SIGNO_VX, SIGNO_W, INVERTIR[FL], INVERTIR[FR], INVERTIR[RL], INVERTIR[RR]);
   Serial.printf("PWM mínimo de arranque: %d%% (%d/%d)\n", PWM_MIN_PCT, PWM_MIN, PWM_MAX);
+
+  // --- I2C + INA226 ---
+  Wire.begin(SDA_PIN, SCL_PIN);
+  Wire.setClock(400000);
+  escanearI2C();
+  inaPresente = iniciarINA226();
+  if (inaPresente) {
+    Serial.printf("INA226 listo (shunt %.3f Ω, máx %.1f A)\n", SHUNT_OHM, 0.08192f / SHUNT_OHM);
+  } else {
+    Serial.println("AVISO: INA226 no encontrado — la página mostrará 'sin sensor'");
+  }
 
   // --- Sistema de archivos ---
   if (!LittleFS.begin()) {
@@ -414,6 +522,38 @@ void loop() {
     Serial.printf("FAILSAFE: sin comandos por %d ms → motores detenidos\n", FAILSAFE_MS);
   }
 
+  // --- Batería: leer el INA226 cada 100 ms ---
+  static unsigned long tIna = 0;
+  static unsigned long tReintentoIna = 0;
+  static int erroresIna = 0;
+  if (inaPresente && ahora - tIna >= PERIODO_INA_MS) {
+    unsigned long dt = (tIna == 0) ? 0 : ahora - tIna;   // primera lectura: sin integrar
+    tIna = ahora;
+    if (leerINA226(dt)) {
+      erroresIna = 0;
+    } else if (++erroresIna >= 5) {
+      inaPresente = false;
+      tReintentoIna = ahora;
+      Serial.println("AVISO: INA226 dejó de responder");
+    }
+  }
+  if (!inaPresente && ahora - tReintentoIna >= REINTENTO_INA_MS) {
+    tReintentoIna = ahora;
+    if (iniciarINA226()) {
+      inaPresente = true;
+      erroresIna = 0;
+      tIna = 0;
+      Serial.println("INA226 encontrado");
+    }
+  }
+
+  static unsigned long tLogBat = 0;
+  if (inaPresente && ahora - tLogBat >= PERIODO_LOG_BAT_MS) {
+    tLogBat = ahora;
+    Serial.printf("BAT  %.2f V  %.3f A  %.2f W  %.0f mAh\n",
+                  vBateria, iBateria, pBateria, mAhConsumidos);
+  }
+
   // --- Estado a la página y frecuencia de comandos, 1 vez/s ---
   static unsigned long tEstado = 0;
   if (ahora - tEstado >= PERIODO_ESTADO_MS) {
@@ -421,11 +561,13 @@ void loop() {
     uint32_t hz = comandosRecibidos;
     comandosRecibidos = 0;
 
-    char json[112];
+    char json[200];
     snprintf(json, sizeof(json),
-             "{\"up\":%lu,\"heap\":%u,\"cli\":%d,\"hz\":%u,\"fs\":%d}",
+             "{\"up\":%lu,\"heap\":%u,\"cli\":%d,\"hz\":%u,\"fs\":%d,"
+             "\"ina\":%d,\"v\":%.2f,\"i\":%.3f,\"p\":%.2f,\"mah\":%.0f}",
              ahora / 1000, (unsigned) ESP.getFreeHeap(), WiFi.softAPgetStationNum(),
-             (unsigned) hz, failsafeActivo ? 1 : 0);
+             (unsigned) hz, failsafeActivo ? 1 : 0,
+             inaPresente ? 1 : 0, vBateria, iBateria, pBateria, mAhConsumidos);
     ws.textAll(json);
     ws.cleanupClients();
   }

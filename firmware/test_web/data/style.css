@@ -190,6 +190,7 @@ input[type="range"] { width: 100%; accent-color: var(--acento); }
 
 /* --- Avisos --- */
 .indicador.aviso { background: rgba(210, 153, 34, 0.18); color: var(--aviso); }
+.indicador.critico { background: var(--error); color: #fff; }
 .oculto { display: none !important; }
 
 .aviso-tomado {

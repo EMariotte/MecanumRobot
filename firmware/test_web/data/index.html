@@ -14,7 +14,9 @@
     <div class="estado">
       <span id="conexion" class="indicador desconectado">Sin conexión</span>
       <span id="failsafe" class="indicador aviso oculto">Failsafe</span>
+      <span id="bat-aviso" class="indicador oculto"></span>
       <span class="dato">Batería <b id="bateria">-- V</b></span>
+      <span class="dato">Consumo <b id="corriente">--</b></span>
       <span class="dato">Latencia <b id="latencia">--</b></span>
     </div>
   </header>
@@ -67,11 +69,13 @@
   </main>
 
   <footer>
+    <span>Potencia <b id="potencia">--</b></span>
+    <span>Consumido <b id="mah">--</b></span>
     <span>Comandos recibidos <b id="hz">--</b>/s</span>
     <span>Activo <b id="uptime">--</b></span>
     <span>Memoria libre <b id="heap">--</b></span>
     <span>Dispositivos <b id="clientes">--</b></span>
-    <span>Paso 3d · joysticks</span>
+    <span>Paso 3e · batería INA226</span>
   </footer>
 
   <script src="app.js"></script>

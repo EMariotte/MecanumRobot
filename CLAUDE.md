@@ -10,7 +10,8 @@ _Última actualización: 2026-11-18_
   - **v1.0 (Fritzing):** layout terminado, exportes de fabricación (etch/mask/silk/paste) generados en `hardware/fritzing/`
   - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
 - **Paso 2 — `test_tb6612`:** ✅ validado en hardware el 2026-11-17 (4 motores adelante → stop → atrás → stop)
-- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3e** (3a ✅ 3b ✅ 3c ✅ 3d ✅)
+- **Paso 3 — `test_web`:** ✅ completo (3a–3e) — control remoto por página web desde LittleFS + telemetría de batería INA226, validado en hardware el 2026-11-18
+- **Paso actual de firmware:** por definir — `test_i2c` sigue pospuesto (faltan MPU-6050 y VL53L0X); candidato: `mecanum_main`
 - **Sensores I2C:** aún no se tienen físicamente → `test_i2c` pospuesto hasta adquirirlos
 - **Sketch activo en PlatformIO:** `firmware/test_web` (ver `src_dir` en `platformio.ini`)
 
@@ -60,8 +61,8 @@ lib_deps =
 
 | GPIO | Pin NodeMCU | Función | Periférico |
 |------|-------------|---------|------------|
-| GPIO4 | D2 | SDA I2C | MPU-6050 + VL53L0X ×2 |
-| GPIO5 | D1 | SCL I2C | MPU-6050 + VL53L0X ×2 |
+| GPIO4 | D2 | SDA I2C | MPU-6050 + VL53L0X ×2 + INA226 |
+| GPIO5 | D1 | SCL I2C | MPU-6050 + VL53L0X ×2 + INA226 |
 | GPIO12 | D6 | PWM Motor FL | TB6612 #1 PWMA |
 | GPIO13 | D7 | PWM Motor FR | TB6612 #1 PWMB |
 | GPIO14 | D5 | PWM Motor RL | TB6612 #2 PWMA |
@@ -72,7 +73,7 @@ lib_deps =
 | GPIO16 | D0 | STBY TB6612 | TB6612 ×2 |
 | GPIO1 | TX | XSHUT VL53L0X #1 | ToF izquierda |
 | GPIO3 | RX | XSHUT VL53L0X #2 | ToF derecha |
-| ADC0 | A0 | Monitor batería | Divisor 100k/13k |
+| ADC0 | A0 | Monitor batería (respaldo) | Divisor 100k/13k — no montado; reemplazado por INA226 |
 
 > **Nota GPIO10/SD3:** disponible solo porque el flash corre en modo DIO (usa GPIO6–9 y GPIO11). Si se compila en QIO el ESP8266 se resetea o cuelga al manipular el latch.
 > **Nota GPIO16/D0:** solo STBY — se pone HIGH en setup() y no se toca durante operación.
@@ -142,7 +143,7 @@ Orden de los pares: **RR RL FR FL** (Q7..Q0). A = adelante, T = atrás.
 - **Página en LittleFS:** `index.html` + `style.css` + `app.js` en `data/`. **Sin librerías ni recursos externos (CDN, fuentes web):** el celular no tiene internet mientras está conectado a la red del robot.
 - **Control por WebSocket** (desde 3b): la página envía el estado del joystick ~20 veces/s. No usar una petición HTTP por comando (latencia excesiva).
 - **Failsafe obligatorio:** si no llega ningún comando en **300 ms**, los motores se detienen. Cubre desconexión, pantalla bloqueada o salir de alcance.
-- **Batería:** se envía a la página ~1 vez/s. No llamar `analogRead(A0)` en un bucle rápido: en el ESP8266 eso puede cortar el Wi-Fi.
+- **Batería:** INA226 por I2C (ver *Monitor de batería*), leído cada 100 ms y enviado a la página 1 vez/s. Ya no se usa `analogRead(A0)` (en el ESP8266, leer A0 seguido puede cortar el Wi-Fi).
 - **Un solo dispositivo con el control:** el último en conectarse lo toma; a los anteriores se les envía `TOMADO` y se desconectan. La página no reconecta sola tras `TOMADO` (evita que dos celulares se peleen el control); muestra un botón *Recuperar control*.
 - **Callback del WebSocket:** se ejecuta fuera de `loop()`. Solo guarda datos y levanta banderas; las impresiones por Serial, el manejo de motores y el cierre de clientes se hacen en `loop()`.
 
@@ -153,7 +154,7 @@ Orden de los pares: **RR RL FR FL** (Q7..Q0). A = adelante, T = atrás.
 | Página → robot | `M i v vmax` | Prueba de una rueda, reemplaza a `C` mientras se mantiene (`i`: 0=FL 1=FR 2=RL 3=RR; `v`: −100…100) |
 | Página → robot | `S` | STOP inmediato |
 | Página → robot | `P n` | Ping; el robot lo devuelve igual para medir latencia |
-| Robot → página | `{"up","heap","cli","hz","fs"}` | Estado 1 vez/s: tiempo activo, memoria libre, dispositivos, comandos/s recibidos, failsafe activo |
+| Robot → página | `{"up","heap","cli","hz","fs","ina","v","i","p","mah"}` | Estado 1 vez/s: tiempo activo, memoria libre, dispositivos, comandos/s recibidos, failsafe activo, INA226 presente, voltaje (V), corriente (A), potencia (W), mAh consumidos |
 | Robot → página | `TOMADO` | Otro dispositivo tomó el control |
 
 > La página deja de enviar cuando está oculta (pantalla bloqueada, cambio de app) → el robot entra en failsafe.
@@ -182,7 +183,7 @@ RL = vy − vx + w     RR = vy + vx − w
 | 3b ✅ | WebSocket: comandos de la página visibles en el Monitor Serial + failsafe (sin motores) |
 | 3c ✅ | Botones (adelante, atrás, strafe, rotar) moviendo motores vía cinemática + prueba de ruedas individuales + failsafe; confirmar sentidos |
 | 3d ✅ | Dos joysticks táctiles (mover + girar) + velocidad proporcional con PWM mínimo; prueba de ruedas pasa a sección de diagnóstico |
-| 3e | Telemetría de batería en la página |
+| 3e ✅ | Telemetría de batería con INA226: voltaje, % de carga, corriente, potencia, mAh y avisos de batería baja/crítica |
 
 ---
 
@@ -212,17 +213,21 @@ RL = vy − vx + w     RR = vy + vx − w
 - MPU-6050 → dirección 0x68 (AD0=GND)
 - VL53L0X #1 → dirección 0x30 (reasignada via XSHUT GPIO1)
 - VL53L0X #2 → dirección 0x29 (default, XSHUT GPIO3)
+- **INA226 → dirección 0x40** (A0 = A1 = GND) — monitor de batería
+- Al arrancar, `test_web` escanea el bus e imprime los dispositivos encontrados.
 
-### Monitor de batería
-```cpp
-// Leer voltaje real desde ADC0
-float leerVoltajeBateria() {
-  int raw = analogRead(A0);           // 0–1023
-  float vADC = raw * (3.3 / 1023.0); // voltaje en el pin
-  float vBat = vADC * (113.0 / 13.0); // divisor 100k/13k
-  return vBat;
-}
-```
+### Monitor de batería — INA226 (módulo con shunt R010)
+- **Shunt 10 mΩ** → rango ±81.92 mV / 0.010 Ω = **±8.19 A** (el polyfuse de 6 A queda dentro del rango).
+- Bus voltage hasta 36 V → mide la batería 2S directo, sin divisor. Resolución 1.25 mV.
+- Sin librerías: registros leídos con `Wire`.
+  - `0x00` configuración = `0x4527` (promedio 16, conversión 1.1 ms, continuo → dato nuevo cada ~35 ms)
+  - `0x01` voltaje del shunt: 2.5 µV/bit con signo → `I = Vshunt / 0.010`
+  - `0x02` voltaje del bus: 1.25 mV/bit
+  - `0xFE` = `0x5449` y `0xFF` = `0x2260` → identifica que el chip es INA226
+- **Conexión fase 1 (solo voltaje):** IN+, IN- y VBUS unidos a `+VBAT_P`; la corriente marca ≈ 0.
+- **Conexión fase 2 (voltaje + corriente):** shunt en serie en el positivo: batería protegida → IN+ → shunt → IN- → resto del robot; VBUS a IN-. Si la corriente sale negativa, IN+ e IN- están invertidos.
+- **Página:** % de carga por curva Li-ion por celda (tabla en `app.js`); aviso **Batería baja < 6.6 V** (3.3 V/celda) y **Batería crítica < 6.2 V** (3.1 V/celda). Con motores andando el voltaje cae y el % se ve menor: es normal.
+- **Respaldo:** divisor 100k/13k en A0 (no montado). Si se usa, considerar que la NodeMCU tiene su propio divisor interno en A0 (220k/100k) que desvía la lectura ~3–4 %.
 
 ---
 
@@ -313,7 +318,7 @@ MecanumRobot/
 
 1. ✅ **test_74hc595** — ESP8266 + 74HC595 + 8 LEDs
 2. ✅ **test_tb6612** — agregar TB6612 ×2 + motores reales
-3. 🟡 **test_web** — control remoto por página web (sub-pasos 3a–3e, ver sección *Control remoto por página web*)
+3. ✅ **test_web** — control remoto por página web (sub-pasos 3a–3e, ver sección *Control remoto por página web*)
 4. ⏸ **test_i2c** — agregar MPU-6050 y VL53L0X (pospuesto hasta tener los sensores)
 5. ⬜ **mecanum_main** — firmware completo integrado
 6. ⬜ **test_espnow** — opcional: control con un segundo ESP como mando físico
@@ -321,4 +326,10 @@ MecanumRobot/
 ### Pendientes de hardware
 - [ ] Completar hoja AUX en KiCad v1.1 y quitarla del `.gitignore`
 - [ ] ERC global del esquemático v1.1
+- [ ] **Agregar INA226 al esquemático v1.1** (reemplaza al divisor de A0 como monitor de batería), en la hoja PWR porque el shunt va en la línea de potencia:
+  - Shunt 10 mΩ 1 % en 2512, ≥ 1 W (a 6 A disipa 0.36 W), **conexión Kelvin** (pistas de medición separadas desde los pads del shunt hasta IN+/IN-)
+  - Ubicación: entre la salida de la protección (polyfuse + MOSFET) y `+VBAT_P` → crear un net intermedio (p. ej. `+VBAT_PROT`) para que el resto de hojas no cambie. Así mide el consumo total (motores + lógica)
+  - INA226AIDGSR (VSSOP-10, pitch 0.5 mm) o footprint de módulo con pines si se prefiere no soldar paso fino
+  - VS a +3V3 con 100 nF, A0/A1 a GND (0x40), SDA/SCL a los Global Labels del bus I2C, ALERT sin conectar
+  - Divisor 100k/13k de A0: dejar como DNP (no montar) o eliminar
 - [ ] Layout PCB v1.1 en KiCad + gerbers

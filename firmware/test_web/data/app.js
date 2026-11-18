@@ -1,13 +1,14 @@
 // Página de control — Robot Mecanum 4WD
-// Paso 3d: dos joysticks (mover + girar) enviados por WebSocket,
-// prueba de ruedas como diagnóstico y estado del robot.
+// Paso 3e: dos joysticks (mover + girar) enviados por WebSocket,
+// prueba de ruedas como diagnóstico, estado del robot y batería (INA226).
 //
 // Protocolo (texto):
 //   Página → robot   "C vx vy w vmax"   20 veces por segundo (también sirve de latido)
 //                    "M i v vmax"       en lugar de "C" mientras se prueba una rueda (i: 0=FL 1=FR 2=RL 3=RR)
 //                    "S"                STOP inmediato
 //                    "P n"              ping para medir latencia
-//   Robot → página   {"up","heap","cli","hz","fs"}  estado, 1 vez/s
+//   Robot → página   {"up","heap","cli","hz","fs",
+//                     "ina","v","i","p","mah"}  estado y batería, 1 vez/s
 //                    "P n"              respuesta al ping
 //                    "TOMADO"           otro dispositivo tomó el control
 
@@ -16,6 +17,17 @@ const PERIODO_PING_MS = 1000;
 const REINTENTO_MS = 1000;       // espera antes de reconectar
 const ESTADO_TIMEOUT_MS = 2500;  // sin estado del robot en este tiempo = desconectado
 const ZONA_MUERTA = 0.12;        // fracción del recorrido del joystick que se ignora (centro)
+
+// Batería 2S Li-ion (2 celdas en serie)
+const CELDAS = 2;
+const BAT_BAJA_V = 3.3 * CELDAS;      // 6.6 V → aviso amarillo
+const BAT_CRITICA_V = 3.1 * CELDAS;   // 6.2 V → aviso rojo: dejar de usar y cargar
+const SIN_BATERIA_V = 3.0;            // por debajo: no hay batería conectada (solo USB)
+// Carga aproximada de una celda Li-ion en reposo: [voltios, %]
+const CURVA_CELDA = [
+  [3.00, 0], [3.30, 5], [3.50, 10], [3.60, 20], [3.70, 35],
+  [3.80, 50], [3.90, 65], [4.00, 78], [4.10, 90], [4.20, 100],
+];
 
 const $ = (id) => document.getElementById(id);
 const NOMBRE_RUEDA = ["FL", "FR", "RL", "RR"];
@@ -69,7 +81,54 @@ function procesarMensaje(msg) {
     $("clientes").textContent = e.cli;
     $("hz").textContent = e.hz;
     $("failsafe").classList.toggle("oculto", e.fs !== 1);
+    mostrarBateria(e);
   }
+}
+
+// ------------------------------------------------------------
+//  Batería
+// ------------------------------------------------------------
+// Porcentaje aproximado interpolando la curva de una celda.
+// Con los motores andando el voltaje baja y el % se ve menor: es normal.
+function porcentajeCarga(voltaje) {
+  const v = voltaje / CELDAS;
+  if (v <= CURVA_CELDA[0][0]) return 0;
+  for (let k = 1; k < CURVA_CELDA.length; k++) {
+    const [v1, p1] = CURVA_CELDA[k];
+    if (v <= v1) {
+      const [v0, p0] = CURVA_CELDA[k - 1];
+      return Math.round(p0 + (v - v0) / (v1 - v0) * (p1 - p0));
+    }
+  }
+  return 100;
+}
+
+function avisoBateria(texto, clase) {
+  const el = $("bat-aviso");
+  el.textContent = texto;
+  el.className = "indicador " + clase + (texto ? "" : " oculto");
+}
+
+function mostrarBateria(e) {
+  if (e.ina !== 1) {
+    $("bateria").textContent = "sin sensor";
+    ["corriente", "potencia", "mah"].forEach((id) => ($(id).textContent = "--"));
+    avisoBateria("", "");
+    return;
+  }
+  $("corriente").textContent = e.i.toFixed(2) + " A";
+  $("potencia").textContent = e.p.toFixed(1) + " W";
+  $("mah").textContent = Math.round(e.mah) + " mAh";
+
+  if (e.v < SIN_BATERIA_V) {
+    $("bateria").textContent = "sin batería";
+    avisoBateria("", "");
+    return;
+  }
+  $("bateria").textContent = `${e.v.toFixed(2)} V · ${porcentajeCarga(e.v)}%`;
+  if (e.v < BAT_CRITICA_V) avisoBateria("Batería crítica", "critico");
+  else if (e.v < BAT_BAJA_V) avisoBateria("Batería baja", "aviso");
+  else avisoBateria("", "");
 }
 
 function marcarConexion(conectado) {
