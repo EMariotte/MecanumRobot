@@ -10,7 +10,7 @@ _Última actualización: 2026-11-18_
   - **v1.0 (Fritzing):** layout terminado, exportes de fabricación (etch/mask/silk/paste) generados en `hardware/fritzing/`
   - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
 - **Paso 2 — `test_tb6612`:** ✅ validado en hardware el 2026-11-17 (4 motores adelante → stop → atrás → stop)
-- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3d** (3a ✅ 3b ✅ 3c ✅)
+- **Paso actual de firmware:** Paso 3 — `test_web` (control remoto por página web desde LittleFS), sub-paso **3e** (3a ✅ 3b ✅ 3c ✅ 3d ✅)
 - **Sensores I2C:** aún no se tienen físicamente → `test_i2c` pospuesto hasta adquirirlos
 - **Sketch activo en PlatformIO:** `firmware/test_web` (ver `src_dir` en `platformio.ini`)
 
@@ -166,7 +166,11 @@ RL = vy − vx + w     RR = vy + vx − w
 ```
 - Normalizar: si algún |valor| > 1, dividir los cuatro por el máximo.
 - **Signo** → bits de dirección del motor en el byte del 74HC595 (01 adelante, 10 atrás).
-- **Magnitud** × velocidad máxima → PWM del motor.
+- **Magnitud** → PWM del motor, con arranque mínimo:
+  - **PWM mínimo de arranque: 30 %** (`PWM_MIN_PCT`, medido en 3c: por debajo los motores no giran). Toda velocidad distinta de cero va de 30 % hasta la velocidad máxima elegida en la página.
+  - **Umbral por rueda: 0.08** (`UMBRAL_RUEDA`): bajo ese valor la rueda se apaga en vez de saltar al 30 %, para no deformar las diagonales.
+  - La barra de velocidad máxima de la página va de 30 % a 100 %.
+- **Joysticks de la página:** izquierdo = mover (`vx`, `vy`), derecho horizontal = girar (`w`, derecha = horario). Zona muerta central del **12 %** del recorrido (`ZONA_MUERTA` en `app.js`); el resto se reescala a 0…100.
 - Los signos de `vx` y `w` dependen del montaje de los rodillos: ✅ **validados en 3c** con calibración por defecto (ver tabla *Byte de dirección para movimientos mecanum*).
 - **Calibración en `test_web.ino`:** `SIGNO_VX`, `SIGNO_W` (±1) para invertir un eje y `INVERTIR[4]` (±1 por rueda FL, FR, RL, RR) para una rueda con polaridad invertida.
 - Bytes que produce la fórmula (orden RR RL FR FL = Q7..Q0): adelante `01 01 01 01` (0x55) · derecha `01 10 10 01` (0x69) · rotar CW `10 01 10 01` (0x99). El Monitor Serial imprime el byte y el PWM de cada comando.
@@ -177,7 +181,7 @@ RL = vy − vx + w     RR = vy + vx − w
 | 3a ✅ | AP + página servida desde LittleFS (motores en STANDBY) |
 | 3b ✅ | WebSocket: comandos de la página visibles en el Monitor Serial + failsafe (sin motores) |
 | 3c ✅ | Botones (adelante, atrás, strafe, rotar) moviendo motores vía cinemática + prueba de ruedas individuales + failsafe; confirmar sentidos |
-| 3d | Joystick táctil + cinemática con velocidad proporcional |
+| 3d ✅ | Dos joysticks táctiles (mover + girar) + velocidad proporcional con PWM mínimo; prueba de ruedas pasa a sección de diagnóstico |
 | 3e | Telemetría de batería en la página |
 
 ---

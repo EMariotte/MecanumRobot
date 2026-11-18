@@ -23,7 +23,7 @@ html, body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  touch-action: none;            /* evita zoom y scroll al usar el joystick */
+  touch-action: manipulation;    /* sin zoom por doble toque; los joysticks usan touch-action: none */
 }
 
 body {
@@ -81,33 +81,48 @@ main {
   min-height: 0;
 }
 
-/* --- Botones de dirección (mantener presionado) --- */
-.pad {
-  width: min(60vmin, 270px);
+/* --- Joysticks --- */
+.joystick {
+  position: relative;
+  width: min(62vmin, 280px);
   aspect-ratio: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 8px;
-}
-.dir {
-  border: 1px solid var(--borde);
-  border-radius: 12px;
-  background: #232a33;
-  color: var(--texto);
-  font-size: 1.6rem;
-  touch-action: none;
-}
-.dir.activo {
-  background: var(--acento);
-  border-color: var(--acento);
-  color: #0b1220;
-}
-.centro {
   border-radius: 50%;
-  border: 2px dashed var(--borde);
-  margin: 18%;
+  border: 2px solid var(--borde);
+  background: radial-gradient(circle, #232a33 0%, #181c22 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;            /* el dedo mueve el joystick, no la página */
 }
+.joystick.horizontal {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: auto;
+  height: 76px;
+  border-radius: 999px;
+  justify-content: center;
+}
+.mando {
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--acento);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.joystick.horizontal .mando { width: 60px; height: 60px; }
+.joystick.activo { border-color: var(--acento); }
+.joystick.activo .mando { opacity: 1; }
+.flecha {
+  position: absolute;
+  font-size: 1.3rem;
+  color: var(--suave);
+  pointer-events: none;
+}
+.flecha.izq { left: 18px; }
+.flecha.der { right: 18px; }
+
+.etiqueta { font-size: 0.8rem; color: var(--suave); margin-top: -6px; }
 
 /* --- Controles --- */
 .controles label {
@@ -136,18 +151,39 @@ input[type="range"] { width: 100%; accent-color: var(--acento); }
 .stop:disabled { opacity: 0.35; }
 .stop:active { filter: brightness(1.25); }
 
-/* --- Prueba de ruedas --- */
-.prueba-ruedas { width: 100%; max-width: 260px; }
-.prueba-ruedas p { font-size: 0.85rem; color: var(--suave); margin-bottom: 8px; }
-.prueba-ruedas p span { font-size: 0.75rem; }
+/* --- Diagnóstico: prueba de ruedas (plegable) --- */
+.diagnostico { width: 100%; max-width: 280px; font-size: 0.85rem; color: var(--suave); }
+.diagnostico summary { cursor: pointer; padding: 4px 0; }
+.diagnostico .ayuda { font-size: 0.75rem; margin: 6px 0 8px; }
 .ruedas {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: 8px;
   align-items: center;
 }
-.rueda { padding: 12px 0; font-size: 1rem; font-weight: 700; }
+.rueda {
+  padding: 12px 0;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: #232a33;
+  color: var(--texto);
+  font-size: 1rem;
+  font-weight: 700;
+  touch-action: none;
+}
+.rueda.activo { background: var(--acento); border-color: var(--acento); color: #0b1220; }
 .frente { font-size: 0.7rem; color: var(--suave); text-align: center; }
+
+/* --- Celular en horizontal (poca altura): compactar --- */
+@media (max-height: 500px) {
+  body { padding: 8px 12px; gap: 8px; }
+  .panel { padding: 10px; gap: 10px; }
+  .controles { justify-content: flex-start; overflow-y: auto; }
+  .joystick { width: min(58vh, 260px); }
+  .joystick.horizontal { height: 64px; }
+  .joystick.horizontal .mando { width: 50px; height: 50px; }
+  .stop { padding: 12px 0; font-size: 1.2rem; }
+}
 
 .enviando { font-size: 0.8rem; color: var(--suave); }
 .enviando b { color: var(--texto); font-variant-numeric: tabular-nums; }

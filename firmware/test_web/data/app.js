@@ -1,6 +1,6 @@
 // Página de control — Robot Mecanum 4WD
-// Paso 3c: envía comandos por WebSocket (movimientos y prueba de ruedas)
-// y muestra el estado del robot.
+// Paso 3d: dos joysticks (mover + girar) enviados por WebSocket,
+// prueba de ruedas como diagnóstico y estado del robot.
 //
 // Protocolo (texto):
 //   Página → robot   "C vx vy w vmax"   20 veces por segundo (también sirve de latido)
@@ -15,8 +15,10 @@ const PERIODO_ENVIO_MS = 50;     // 20 comandos/s — el failsafe del robot es d
 const PERIODO_PING_MS = 1000;
 const REINTENTO_MS = 1000;       // espera antes de reconectar
 const ESTADO_TIMEOUT_MS = 2500;  // sin estado del robot en este tiempo = desconectado
+const ZONA_MUERTA = 0.12;        // fracción del recorrido del joystick que se ignora (centro)
 
 const $ = (id) => document.getElementById(id);
+const NOMBRE_RUEDA = ["FL", "FR", "RL", "RR"];
 
 let ws = null;
 let controlTomado = false;       // otro dispositivo tiene el control: no reconectar solo
@@ -87,13 +89,86 @@ function formatoTiempo(seg) {
 }
 
 // ------------------------------------------------------------
+//  Joystick táctil reutilizable
+//  base: elemento donde se toca · horizontal: solo eje X
+//  alCambiar(x, y): valores -100..100 (y positivo = arriba)
+// ------------------------------------------------------------
+function crearJoystick(base, horizontal, alCambiar) {
+  const mando = base.querySelector(".mando");
+  let puntero = null;
+
+  function mover(ev) {
+    const r = base.getBoundingClientRect();
+    // Recorrido máximo del mando desde el centro
+    const radioX = (r.width - mando.offsetWidth) / 2;
+    const radioY = horizontal ? 0 : (r.height - mando.offsetHeight) / 2;
+    let dx = ev.clientX - (r.left + r.width / 2);
+    let dy = horizontal ? 0 : ev.clientY - (r.top + r.height / 2);
+
+    // Limitar al círculo (o a la barra si es horizontal)
+    let x = dx / radioX;
+    let y = horizontal ? 0 : -dy / radioY;
+    const largo = Math.hypot(x, y);
+    if (largo > 1) { x /= largo; y /= largo; }
+    mando.style.transform = `translate(${x * radioX}px, ${-y * radioY}px)`;
+
+    // Zona muerta en el centro y reescalado del resto a 0..1
+    const m = Math.min(Math.hypot(x, y), 1);
+    if (m < ZONA_MUERTA) {
+      x = 0; y = 0;
+    } else {
+      const k = (m - ZONA_MUERTA) / (1 - ZONA_MUERTA) / m;
+      x *= k; y *= k;
+    }
+    alCambiar(Math.round(x * 100), Math.round(y * 100));
+  }
+
+  function soltar() {
+    if (puntero === null) return;
+    puntero = null;
+    mando.style.transform = "";
+    base.classList.remove("activo");
+    alCambiar(0, 0);
+  }
+
+  base.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    if (puntero !== null) return;            // ya hay un dedo en este joystick
+    puntero = ev.pointerId;
+    base.setPointerCapture(puntero);
+    base.classList.add("activo");
+    mover(ev);
+  });
+  base.addEventListener("pointermove", (ev) => { if (ev.pointerId === puntero) mover(ev); });
+  base.addEventListener("pointerup", (ev) => { if (ev.pointerId === puntero) soltar(); });
+  base.addEventListener("pointercancel", (ev) => { if (ev.pointerId === puntero) soltar(); });
+  base.addEventListener("lostpointercapture", (ev) => { if (ev.pointerId === puntero) soltar(); });
+
+  return {
+    soltar() {
+      if (puntero !== null && base.hasPointerCapture(puntero)) base.releasePointerCapture(puntero);
+      soltar();
+    },
+  };
+}
+
+const joyMover = crearJoystick($("joy-mover"), false, (x, y) => {
+  cmd.vx = x;
+  cmd.vy = y;
+  mostrarComando();
+});
+
+const joyGirar = crearJoystick($("joy-girar"), true, (x) => {
+  cmd.w = x;                     // derecha = girar en sentido horario
+  mostrarComando();
+});
+
+// ------------------------------------------------------------
 //  Comandos
 // ------------------------------------------------------------
 function velocidadMax() {
   return Number($("vel-max").value);
 }
-
-const NOMBRE_RUEDA = ["FL", "FR", "RL", "RR"];
 
 function mostrarComando() {
   $("cmd-actual").textContent = cmd.rueda >= 0
@@ -101,9 +176,12 @@ function mostrarComando() {
     : `vx ${cmd.vx} · vy ${cmd.vy} · w ${cmd.w}`;
 }
 
+// Suelta joysticks y botones: el robot recibe ceros desde el próximo envío
 function soltarTodo() {
+  joyMover.soltar();
+  joyGirar.soltar();
   cmd = { vx: 0, vy: 0, w: 0, rueda: -1 };
-  document.querySelectorAll(".dir.activo").forEach((b) => b.classList.remove("activo"));
+  document.querySelectorAll(".rueda.activo").forEach((b) => b.classList.remove("activo"));
   mostrarComando();
 }
 
@@ -112,7 +190,7 @@ function soltarTodo() {
 setInterval(() => {
   if (document.hidden) return;
   if (cmd.rueda >= 0) {
-    enviar(`M ${cmd.rueda} ${cmd.vy} ${velocidadMax()}`);     // prueba de una rueda
+    enviar(`M ${cmd.rueda} 100 ${velocidadMax()}`);     // prueba de una rueda
   } else {
     enviar(`C ${cmd.vx} ${cmd.vy} ${cmd.w} ${velocidadMax()}`);
   }
@@ -122,31 +200,22 @@ setInterval(() => enviar(`P ${Math.round(performance.now())}`), PERIODO_PING_MS)
 
 // Si el robot deja de mandar estado, la conexión está muerta aunque el socket diga lo contrario
 setInterval(() => {
-  if (ws && ws.readyState === WebSocket.OPEN && performance.now() - ultimoEstado > ESTADO_TIMEOUT_MS && ultimoEstado > 0) {
+  if (ws && ws.readyState === WebSocket.OPEN && ultimoEstado > 0 &&
+      performance.now() - ultimoEstado > ESTADO_TIMEOUT_MS) {
     ws.close();
   }
 }, 500);
 
 // ------------------------------------------------------------
-//  Botones de dirección: mover mientras se mantienen presionados
+//  Prueba de ruedas: mover mientras se mantiene presionado
 // ------------------------------------------------------------
-document.querySelectorAll(".dir").forEach((boton) => {
+document.querySelectorAll(".rueda").forEach((boton) => {
   const presionar = (ev) => {
     ev.preventDefault();
     soltarTodo();
     boton.setPointerCapture(ev.pointerId);
     boton.classList.add("activo");
-    if (boton.dataset.rueda !== undefined) {
-      // Prueba de rueda: solo esa rueda, hacia adelante
-      cmd = { vx: 0, vy: 100, w: 0, rueda: Number(boton.dataset.rueda) };
-    } else {
-      cmd = {
-        vx: Number(boton.dataset.vx || 0),
-        vy: Number(boton.dataset.vy || 0),
-        w: Number(boton.dataset.w || 0),
-        rueda: -1,
-      };
-    }
+    cmd.rueda = Number(boton.dataset.rueda);
     mostrarComando();
   };
   const soltar = () => {
@@ -158,6 +227,9 @@ document.querySelectorAll(".dir").forEach((boton) => {
   boton.addEventListener("lostpointercapture", soltar);
 });
 
+// ------------------------------------------------------------
+//  Otros controles
+// ------------------------------------------------------------
 $("stop").addEventListener("pointerdown", (ev) => {
   ev.preventDefault();
   soltarTodo();

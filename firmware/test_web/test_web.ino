@@ -5,12 +5,12 @@
 #include <ESPAsyncWebServer.h>
 
 // ============================================================
-//  PRUEBA CONTROL WEB — Paso 3c
+//  PRUEBA CONTROL WEB — Paso 3d
 //  Robot Mecanum 4WD — Fase 6
 //  El robot crea su propia red Wi-Fi (Access Point), sirve la
 //  página guardada en LittleFS y recibe comandos por WebSocket.
-//  En este sub-paso los MOTORES SE MUEVEN: cinemática mecanum
-//  aplicada a los botones de la página + prueba de ruedas.
+//  Control con dos joysticks (mover + girar) y velocidad
+//  proporcional con PWM mínimo de arranque.
 //
 //  ⚠ Primera prueba con el robot levantado (ruedas en el aire)
 //    y velocidad máxima baja.
@@ -50,6 +50,13 @@
 // --- PWM ---
 #define PWM_FRECUENCIA 1000   // Hz
 #define PWM_MAX        255    // rango de analogWrite
+// PWM mínimo con el que los motores arrancan (medido en 3c: 30%).
+// Cualquier velocidad distinta de cero empieza aquí y sube hasta vmax.
+#define PWM_MIN_PCT    30
+#define PWM_MIN        ((PWM_MIN_PCT * PWM_MAX + 50) / 100)
+// Por debajo de este valor (0..1) la rueda se apaga en vez de saltar al
+// PWM mínimo. Evita deformar diagonales donde una rueda va casi detenida.
+#define UMBRAL_RUEDA   0.08f
 
 // --- Control ---
 #define FAILSAFE_MS       300   // sin comandos en este tiempo → motores detenidos
@@ -104,14 +111,23 @@ void shiftWrite(byte data) {
   digitalWrite(STCP_PIN, HIGH);
 }
 
+// Convierte una magnitud 0..1 en PWM: 0 si está bajo el umbral; si no,
+// de PWM_MIN (arranque) a pwmTope (velocidad máxima elegida en la página).
+int magnitudAPwm(float magnitud, int pwmTope) {
+  if (magnitud < UMBRAL_RUEDA) return 0;
+  float t = (magnitud - UMBRAL_RUEDA) / (1.0f - UMBRAL_RUEDA);   // 0..1
+  return PWM_MIN + (int) roundf(t * (pwmTope - PWM_MIN));
+}
+
 // Aplica dirección y PWM a las 4 ruedas.
 // velocidad[i]: -1.0 (atrás máx) … +1.0 (adelante máx), ya con calibración.
 // Bits por rueda en el 74HC595 (par Qn+1,Qn): 01 adelante, 10 atrás, 00 libre.
 void aplicarRuedas(const float velocidad[4], int vmax, byte *dirOut, int *pwmOut) {
+  int pwmTope = max((int) roundf(vmax / 100.0f * PWM_MAX), PWM_MIN);
   byte dir = 0;
   for (int i = 0; i < 4; i++) {
     float v = velocidad[i];
-    int pwm = (int) roundf(fabsf(v) * vmax / 100.0f * PWM_MAX);
+    int pwm = magnitudAPwm(fabsf(v), pwmTope);
     if (pwm > 0) dir |= (v > 0 ? 0b01 : 0b10) << (2 * i);
     pwmOut[i] = pwm;
   }
@@ -274,9 +290,10 @@ void setup() {
   inicializarMotores();            // primero: garantizar que nada se mueve
   Serial.begin(115200);
   delay(100);
-  Serial.println("\n\n=== TEST WEB — Paso 3c (motores activos) ===");
+  Serial.println("\n\n=== TEST WEB — Paso 3d (joysticks) ===");
   Serial.printf("Calibración: SIGNO_VX=%d  SIGNO_W=%d  INVERTIR={%d,%d,%d,%d}\n",
                 SIGNO_VX, SIGNO_W, INVERTIR[FL], INVERTIR[FR], INVERTIR[RL], INVERTIR[RR]);
+  Serial.printf("PWM mínimo de arranque: %d%% (%d/%d)\n", PWM_MIN_PCT, PWM_MIN, PWM_MAX);
 
   // --- Sistema de archivos ---
   if (!LittleFS.begin()) {
@@ -358,25 +375,36 @@ void loop() {
   }
 
   // --- Comando nuevo: aplicar a los motores si cambió ---
+  // Con joystick los valores cambian muy seguido: los motores se actualizan
+  // siempre, pero el Monitor Serial imprime como máximo 5 veces por segundo.
+  static Comando aplicado = {999, 999, 999, 999, 999};
+  static byte    dirAplicada = 0;
+  static int     pwmAplicado[4] = {0, 0, 0, 0};
+  static bool    pendienteImprimir = false;
+  static unsigned long tImpresion = 0;
+
   if (hayComandoNuevo) {
     hayComandoNuevo = false;
-    static Comando aplicado = {999, 999, 999, 999, 999};
     Comando c = comandoActual;
     bool cambio = c.vx != aplicado.vx || c.vy != aplicado.vy || c.w != aplicado.w ||
                   c.vmax != aplicado.vmax || c.rueda != aplicado.rueda;
     if (cambio || failsafeActivo) {
       float velocidad[4];
-      byte dir;
-      int pwm[4];
       calcularVelocidades(c, velocidad);
-      aplicarRuedas(velocidad, c.vmax, &dir, pwm);
-      if (cambio) imprimirAplicado(c, dir, pwm);
+      aplicarRuedas(velocidad, c.vmax, &dirAplicada, pwmAplicado);
+      if (cambio) pendienteImprimir = true;
       aplicado = c;
     }
     if (failsafeActivo) {
       failsafeActivo = false;
       Serial.println("Comandos recibiéndose — control activo");
     }
+  }
+
+  if (pendienteImprimir && ahora - tImpresion >= 200) {
+    pendienteImprimir = false;
+    tImpresion = ahora;
+    imprimirAplicado(aplicado, dirAplicada, pwmAplicado);
   }
 
   // --- Failsafe: sin comandos recientes → detener ---
