@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#111418">
+  <title>Mecanum Robot</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Barra superior: estado de conexión y telemetría -->
+  <header>
+    <h1>Mecanum 4WD</h1>
+    <div class="estado">
+      <span id="conexion" class="indicador desconectado">Sin conexión</span>
+      <span id="failsafe" class="indicador aviso oculto">Failsafe</span>
+      <span id="bat-aviso" class="indicador oculto"></span>
+      <span class="dato">Batería <b id="bateria">-- V</b></span>
+      <span class="dato">Consumo <b id="corriente">--</b></span>
+      <span class="dato">Latencia <b id="latencia">--</b></span>
+    </div>
+  </header>
+
+  <!-- Aviso cuando otro dispositivo toma el control -->
+  <div id="aviso-tomado" class="aviso-tomado oculto">
+    Otro dispositivo tomó el control del robot.
+    <button id="recuperar">Recuperar control</button>
+  </div>
+
+  <main>
+    <!-- Joystick izquierdo: mover en cualquier dirección (vx, vy) -->
+    <section class="panel">
+      <div id="joy-mover" class="joystick">
+        <div class="mando"></div>
+      </div>
+      <p class="etiqueta">Mover</p>
+    </section>
+
+    <!-- Columna derecha: girar, velocidad, STOP y diagnóstico -->
+    <section class="panel controles">
+      <div id="joy-girar" class="joystick horizontal">
+        <span class="flecha izq">⟲</span>
+        <div class="mando"></div>
+        <span class="flecha der">⟳</span>
+      </div>
+      <p class="etiqueta">Girar</p>
+
+      <label><span>Velocidad máxima <b id="vel-valor">50%</b><span id="vel-limite" class="limite"></span></span>
+        <input type="range" id="vel-max" min="30" max="100" value="50">
+      </label>
+      <button id="stop" class="stop">STOP</button>
+
+      <!-- Diagnóstico: prueba de ruedas (plegado por defecto) -->
+      <details class="diagnostico">
+        <summary>Diagnóstico — prueba de ruedas</summary>
+        <p class="ayuda">Mantener presionado → solo esa rueda gira adelante</p>
+        <div class="ruedas">
+          <button class="rueda" data-rueda="0">FL</button>
+          <span class="frente">▲ frente</span>
+          <button class="rueda" data-rueda="1">FR</button>
+          <button class="rueda" data-rueda="2">RL</button>
+          <span></span>
+          <button class="rueda" data-rueda="3">RR</button>
+        </div>
+      </details>
+
+      <p class="enviando">Enviando <b id="cmd-actual">vx 0 · vy 0 · w 0</b></p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Potencia <b id="potencia">--</b></span>
+    <span>Consumido <b id="mah">--</b></span>
+    <span>Comandos recibidos <b id="hz">--</b>/s</span>
+    <span>Activo <b id="uptime">--</b></span>
+    <span>Memoria libre <b id="heap">--</b></span>
+    <span>Dispositivos <b id="clientes">--</b></span>
+    <span>mecanum_main v<b id="fw">--</b></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

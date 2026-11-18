@@ -11,9 +11,9 @@ _Última actualización: 2026-11-18_
   - **v1.1 (KiCad):** esquemático jerárquico en curso — hojas PWR, MCU, MOTOR, SENSOR dibujadas; hoja **AUX pendiente** (excluida del repo vía `.gitignore`). Layout PCB **no iniciado** (`.kicad_pcb` vacío, `gerbers/` y `pcb/` vacías)
 - **Paso 2 — `test_tb6612`:** ✅ validado en hardware el 2026-11-17 (4 motores adelante → stop → atrás → stop)
 - **Paso 3 — `test_web`:** ✅ completo (3a–3e) — control remoto por página web desde LittleFS + telemetría de batería INA226, validado en hardware el 2026-11-18
-- **Paso actual de firmware:** por definir — `test_i2c` sigue pospuesto (faltan MPU-6050 y VL53L0X); candidato: `mecanum_main`
+- **Paso actual de firmware:** Paso 5 — `mecanum_main` (firmware principal modular): **5a ✅** validado en hardware el 2026-11-18; 5b (sensores) en espera de los MPU-6050 / VL53L0X
 - **Sensores I2C:** aún no se tienen físicamente → `test_i2c` pospuesto hasta adquirirlos
-- **Sketch activo en PlatformIO:** `firmware/test_web` (ver `src_dir` en `platformio.ini`)
+- **Sketch activo en PlatformIO:** `firmware/mecanum_main` (ver `src_dir` en `platformio.ini`)
 
 ---
 
@@ -34,8 +34,8 @@ _Última actualización: 2026-11-18_
 ### platformio.ini
 ```ini
 [platformio]
-src_dir = firmware/test_web             ; cambiar al avanzar de paso
-data_dir = firmware/test_web/data       ; archivos de la página → LittleFS
+src_dir = firmware/mecanum_main         ; cambiar al avanzar de paso
+data_dir = firmware/mecanum_main/data   ; archivos de la página → LittleFS
 
 [env:nodemcuv2]
 platform = espressif8266
@@ -154,7 +154,7 @@ Orden de los pares: **RR RL FR FL** (Q7..Q0). A = adelante, T = atrás.
 | Página → robot | `M i v vmax` | Prueba de una rueda, reemplaza a `C` mientras se mantiene (`i`: 0=FL 1=FR 2=RL 3=RR; `v`: −100…100) |
 | Página → robot | `S` | STOP inmediato |
 | Página → robot | `P n` | Ping; el robot lo devuelve igual para medir latencia |
-| Robot → página | `{"up","heap","cli","hz","fs","ina","v","i","p","mah"}` | Estado 1 vez/s: tiempo activo, memoria libre, dispositivos, comandos/s recibidos, failsafe activo, INA226 presente, voltaje (V), corriente (A), potencia (W), mAh consumidos |
+| Robot → página | `{"up","heap","cli","hz","fs","bat","lim","v","i","p","mah","fw"}` | Estado 1 vez/s: tiempo activo, memoria libre, dispositivos, comandos/s recibidos, failsafe activo, estado de batería (`bat`: 0 sin sensor · 1 sin batería/USB · 2 normal · 3 baja · 4 crítica · 5 agotada), velocidad máxima permitida (%), voltaje filtrado (V), corriente (A), potencia (W), mAh consumidos, versión de firmware. *(`test_web` enviaba `ina` en lugar de `bat`/`lim`/`fw` y calculaba los avisos en la página.)* |
 | Robot → página | `TOMADO` | Otro dispositivo tomó el control |
 
 > La página deja de enviar cuando está oculta (pantalla bloqueada, cambio de app) → el robot entra en failsafe.
@@ -173,7 +173,7 @@ RL = vy − vx + w     RR = vy + vx − w
   - La barra de velocidad máxima de la página va de 30 % a 100 %.
 - **Joysticks de la página:** izquierdo = mover (`vx`, `vy`), derecho horizontal = girar (`w`, derecha = horario). Zona muerta central del **12 %** del recorrido (`ZONA_MUERTA` en `app.js`); el resto se reescala a 0…100.
 - Los signos de `vx` y `w` dependen del montaje de los rodillos: ✅ **validados en 3c** con calibración por defecto (ver tabla *Byte de dirección para movimientos mecanum*).
-- **Calibración en `test_web.ino`:** `SIGNO_VX`, `SIGNO_W` (±1) para invertir un eje y `INVERTIR[4]` (±1 por rueda FL, FR, RL, RR) para una rueda con polaridad invertida.
+- **Calibración en `config.h` de `mecanum_main`** (en `test_web.ino` para el sketch de prueba): `SIGNO_VX`, `SIGNO_W` (±1) para invertir un eje y `INVERTIR[4]` (±1 por rueda FL, FR, RL, RR) para una rueda con polaridad invertida.
 - Bytes que produce la fórmula (orden RR RL FR FL = Q7..Q0): adelante `01 01 01 01` (0x55) · derecha `01 10 10 01` (0x69) · rotar CW `10 01 10 01` (0x99). El Monitor Serial imprime el byte y el PWM de cada comando.
 
 ### Sub-pasos de `test_web`
@@ -184,6 +184,44 @@ RL = vy − vx + w     RR = vy + vx − w
 | 3c ✅ | Botones (adelante, atrás, strafe, rotar) moviendo motores vía cinemática + prueba de ruedas individuales + failsafe; confirmar sentidos |
 | 3d ✅ | Dos joysticks táctiles (mover + girar) + velocidad proporcional con PWM mínimo; prueba de ruedas pasa a sección de diagnóstico |
 | 3e ✅ | Telemetría de batería con INA226: voltaje, % de carga, corriente, potencia, mAh y avisos de batería baja/crítica |
+
+---
+
+## Firmware principal — `mecanum_main`
+
+### Módulos (`firmware/mecanum_main/`)
+| Archivo | Contenido |
+|---|---|
+| `mecanum_main.ino` | `setup()` / `loop()`: coordina los módulos, failsafe, bloqueo por batería, estado a la página, comandos por Serial |
+| `config.h` | Pines, Wi-Fi, PWM, tiempos, umbrales de batería, calibración, `DEPURACION` y macro `LOG(...)` |
+| `motores.h/.cpp` | 74HC595 + TB6612, cinemática mecanum, PWM mínimo, rampa de aceleración |
+| `bus_i2c.h/.cpp` | `Wire` y escaneo del bus (aquí se sumarán MPU-6050 y VL53L0X) |
+| `bateria.h/.cpp` | INA226 sin librerías, filtro de voltaje, estados y protección de la batería |
+| `control_web.h/.cpp` | LittleFS, AP, servidor, WebSocket y protocolo; expone funciones `webTomar…()` para `loop()` |
+| `data/` | Página (la de `test_web` 3e + estados de batería del robot, límite de velocidad y versión) |
+
+> PlatformIO y Arduino IDE compilan todos los `.cpp` de la carpeta del sketch: no hace falta configurar nada extra.
+
+### Lo que agrega sobre `test_web`
+- **Rampa de aceleración** (`RAMPA_MS = 200`: de 0 a 100 % en 200 ms, actualizada cada 20 ms). Al invertir el sentido, la rueda pasa por cero antes de cambiar la dirección → menos picos de corriente y menos riesgo de reinicio del ESP. **STOP, failsafe y desconexión frenan de inmediato**, sin rampa. `RAMPA_MS = 0` la desactiva.
+- **Protección de batería** sobre el voltaje **filtrado** (constante de tiempo 2 s, para ignorar caídas breves al arrancar los motores):
+
+  | Estado | Condición | Acción |
+  |---|---|---|
+  | Baja | < 6.6 V | Aviso amarillo en la página |
+  | Crítica | < 6.2 V | Velocidad máxima limitada a **50 %** + aviso rojo |
+  | Agotada | < 6.0 V durante **5 s** | Motores detenidos y **STBY = LOW**; queda bloqueado hasta reiniciar |
+  | Sin batería | < 3.0 V | Solo USB: sin avisos (los motores no tienen alimentación) |
+
+  Histéresis de 0.15 V para salir de baja/crítica. Sin INA226 no hay protección (la página muestra "sin sensor").
+- **Depuración desactivable:** `DEPURACION 1` en `config.h` → mensajes por Serial con `LOG(...)`. Poner en **0** cuando se monten los VL53L0X (XSHUT en TX/RX).
+- **Comandos por Monitor Serial** (con `DEPURACION 1`): `sim 6.1` simula ese voltaje para probar la protección sin descargar la batería; `sim 0` vuelve al voltaje real y desbloquea si quedó en *agotada*.
+
+### Sub-pasos de `mecanum_main`
+| Sub-paso | Valida |
+|---|---|
+| 5a ✅ | Firmware modular con todo lo de `test_web` + rampa de aceleración + protección de batería (probada con `sim`) |
+| 5b ⏸ | Integrar MPU-6050 y VL53L0X ×2 (cuando lleguen los sensores; reemplaza a `test_i2c`) |
 
 ---
 
@@ -214,7 +252,7 @@ RL = vy − vx + w     RR = vy + vx − w
 - VL53L0X #1 → dirección 0x30 (reasignada via XSHUT GPIO1)
 - VL53L0X #2 → dirección 0x29 (default, XSHUT GPIO3)
 - **INA226 → dirección 0x40** (A0 = A1 = GND) — monitor de batería
-- Al arrancar, `test_web` escanea el bus e imprime los dispositivos encontrados.
+- Al arrancar, `test_web` y `mecanum_main` escanean el bus e imprimen los dispositivos encontrados.
 
 ### Monitor de batería — INA226 (módulo con shunt R010)
 - **Shunt 10 mΩ** → rango ±81.92 mV / 0.010 Ω = **±8.19 A** (el polyfuse de 6 A queda dentro del rango).
@@ -226,7 +264,7 @@ RL = vy − vx + w     RR = vy + vx − w
   - `0xFE` = `0x5449` y `0xFF` = `0x2260` → identifica que el chip es INA226
 - **Conexión fase 1 (solo voltaje):** IN+, IN- y VBUS unidos a `+VBAT_P`; la corriente marca ≈ 0.
 - **Conexión fase 2 (voltaje + corriente):** shunt en serie en el positivo: batería protegida → IN+ → shunt → IN- → resto del robot; VBUS a IN-. Si la corriente sale negativa, IN+ e IN- están invertidos.
-- **Página:** % de carga por curva Li-ion por celda (tabla en `app.js`); aviso **Batería baja < 6.6 V** (3.3 V/celda) y **Batería crítica < 6.2 V** (3.1 V/celda). Con motores andando el voltaje cae y el % se ve menor: es normal.
+- **Página:** % de carga por curva Li-ion por celda (tabla en `app.js`); aviso **Batería baja < 6.6 V** (3.3 V/celda) y **Batería crítica < 6.2 V** (3.1 V/celda). Con motores andando el voltaje cae y el % se ve menor: es normal. En `mecanum_main` los estados los decide el robot (ver *Protección de batería*) y la página solo los muestra.
 - **Respaldo:** divisor 100k/13k en A0 (no montado). Si se usa, considerar que la NodeMCU tiene su propio divisor interno en A0 (220k/100k) que desvía la lectura ~3–4 %.
 
 ---
@@ -291,7 +329,7 @@ MecanumRobot/
     │   └── diag_74hc595.ino
     ├── test_tb6612/                   ← PASO 2 ✅
     │   └── test_tb6612.ino
-    ├── test_web/                      ← PASO 3 — ACTUAL (control web)
+    ├── test_web/                      ← PASO 3 ✅ (control web)
     │   ├── test_web.ino
     │   └── data/                      ← se carga a LittleFS
     │       ├── index.html
@@ -299,7 +337,14 @@ MecanumRobot/
     │       └── app.js
     ├── test_i2c/                      ← paso 4 (pospuesto: faltan sensores)
     ├── test_espnow/                   ← opcional, a futuro
-    └── mecanum_main/                  ← firmware final (por crear)
+    └── mecanum_main/                  ← PASO 5 — ACTUAL (firmware principal)
+        ├── mecanum_main.ino
+        ├── config.h
+        ├── motores.h / .cpp
+        ├── bus_i2c.h / .cpp
+        ├── bateria.h / .cpp
+        ├── control_web.h / .cpp
+        └── data/                      ← página → LittleFS
 ```
 
 ---
@@ -307,6 +352,7 @@ MecanumRobot/
 ## Convenciones de código
 
 - Un archivo `.ino` por subsistema de prueba, cada uno en su carpeta bajo `firmware/`
+- `mecanum_main` es modular: un `.h/.cpp` por subsistema, configuración centralizada en `config.h`, impresiones con `LOG(...)` (no `Serial.print` directo)
 - Comentarios en español
 - Constantes de pines en `#define` al inicio
 - Serial.begin(115200) en todo sketch de prueba (ver nota GPIO1/GPIO3 a partir de `test_i2c`)
@@ -320,7 +366,7 @@ MecanumRobot/
 2. ✅ **test_tb6612** — agregar TB6612 ×2 + motores reales
 3. ✅ **test_web** — control remoto por página web (sub-pasos 3a–3e, ver sección *Control remoto por página web*)
 4. ⏸ **test_i2c** — agregar MPU-6050 y VL53L0X (pospuesto hasta tener los sensores)
-5. ⬜ **mecanum_main** — firmware completo integrado
+5. 🟡 **mecanum_main** — firmware completo integrado (sub-pasos 5a–5b, ver sección *Firmware principal*)
 6. ⬜ **test_espnow** — opcional: control con un segundo ESP como mando físico
 
 ### Pendientes de hardware

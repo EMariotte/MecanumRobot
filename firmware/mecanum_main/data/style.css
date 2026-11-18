@@ -1,0 +1,227 @@
+/* Página de control — Robot Mecanum 4WD
+   Sin librerías externas: el celular no tiene internet en la red del robot. */
+
+:root {
+  --fondo: #111418;
+  --panel: #1c2128;
+  --borde: #2d343d;
+  --texto: #e6e8eb;
+  --suave: #8b949e;
+  --acento: #3fa7ff;
+  --ok: #3fb950;
+  --error: #f85149;
+  --aviso: #d29922;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;    /* sin zoom por doble toque; los joysticks usan touch-action: none */
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  gap: 12px;
+}
+
+/* --- Barra superior --- */
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+h1 { font-size: 1.1rem; font-weight: 600; }
+
+.estado { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 0.9rem; }
+.dato { color: var(--suave); }
+.dato b { color: var(--texto); font-variant-numeric: tabular-nums; }
+
+.indicador {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.indicador.conectado    { background: rgba(63, 185, 80, 0.15); color: var(--ok); }
+.indicador.desconectado { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+
+/* --- Zona de control: dos columnas en horizontal, una en vertical --- */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+@media (orientation: landscape) {
+  main { grid-template-columns: 1.4fr 1fr; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
+}
+
+/* --- Joysticks --- */
+.joystick {
+  position: relative;
+  width: min(62vmin, 280px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid var(--borde);
+  background: radial-gradient(circle, #232a33 0%, #181c22 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;            /* el dedo mueve el joystick, no la página */
+}
+.joystick.horizontal {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: auto;
+  height: 76px;
+  border-radius: 999px;
+  justify-content: center;
+}
+.mando {
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--acento);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.joystick.horizontal .mando { width: 60px; height: 60px; }
+.joystick.activo { border-color: var(--acento); }
+.joystick.activo .mando { opacity: 1; }
+.flecha {
+  position: absolute;
+  font-size: 1.3rem;
+  color: var(--suave);
+  pointer-events: none;
+}
+.flecha.izq { left: 18px; }
+.flecha.der { right: 18px; }
+
+.etiqueta { font-size: 0.8rem; color: var(--suave); margin-top: -6px; }
+
+/* --- Controles --- */
+.controles label {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--suave);
+}
+.controles label b { color: var(--texto); }
+.controles .limite { color: var(--error); font-weight: 600; }
+input[type="range"] { width: 100%; accent-color: var(--acento); }
+
+.stop {
+  width: 100%;
+  max-width: 260px;
+  padding: 18px 0;
+  border: none;
+  border-radius: 12px;
+  background: var(--error);
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.stop:disabled { opacity: 0.35; }
+.stop:active { filter: brightness(1.25); }
+
+/* --- Diagnóstico: prueba de ruedas (plegable) --- */
+.diagnostico { width: 100%; max-width: 280px; font-size: 0.85rem; color: var(--suave); }
+.diagnostico summary { cursor: pointer; padding: 4px 0; }
+.diagnostico .ayuda { font-size: 0.75rem; margin: 6px 0 8px; }
+.ruedas {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.rueda {
+  padding: 12px 0;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: #232a33;
+  color: var(--texto);
+  font-size: 1rem;
+  font-weight: 700;
+  touch-action: none;
+}
+.rueda.activo { background: var(--acento); border-color: var(--acento); color: #0b1220; }
+.frente { font-size: 0.7rem; color: var(--suave); text-align: center; }
+
+/* --- Celular en horizontal (poca altura): compactar --- */
+@media (max-height: 500px) {
+  body { padding: 8px 12px; gap: 8px; }
+  .panel { padding: 10px; gap: 10px; }
+  .controles { justify-content: flex-start; overflow-y: auto; }
+  .joystick { width: min(58vh, 260px); }
+  .joystick.horizontal { height: 64px; }
+  .joystick.horizontal .mando { width: 50px; height: 50px; }
+  .stop { padding: 12px 0; font-size: 1.2rem; }
+}
+
+.enviando { font-size: 0.8rem; color: var(--suave); }
+.enviando b { color: var(--texto); font-variant-numeric: tabular-nums; }
+
+/* --- Avisos --- */
+.indicador.aviso { background: rgba(210, 153, 34, 0.18); color: var(--aviso); }
+.indicador.critico { background: var(--error); color: #fff; }
+.oculto { display: none !important; }
+
+.aviso-tomado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(210, 153, 34, 0.15);
+  border: 1px solid rgba(210, 153, 34, 0.4);
+  color: var(--aviso);
+  font-size: 0.9rem;
+}
+.aviso-tomado button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--aviso);
+  color: #1a1300;
+  font-weight: 700;
+}
+
+/* --- Pie --- */
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 0.75rem;
+  color: var(--suave);
+}
+footer b { color: var(--texto); font-variant-numeric: tabular-nums; }
